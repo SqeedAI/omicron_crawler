@@ -3,20 +3,14 @@ use std::sync::Once;
 
 pub struct Logger;
 impl log::Log for Logger {
-    fn enabled(
-        &self,
-        metadata: &Metadata,
-    ) -> bool {
+    fn enabled(&self, metadata: &Metadata) -> bool {
         if metadata.level() <= log::Level::Trace {
             return true;
         }
         false
     }
 
-    fn log(
-        &self,
-        record: &Record,
-    ) {
+    fn log(&self, record: &Record) {
         println!("[{}] {}", record.level(), record.args());
     }
 

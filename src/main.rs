@@ -2,20 +2,22 @@
 extern crate log;
 #[macro_use]
 mod macros;
-mod logger;
 mod chrome_driver_launcher;
-
-
-use logger::Logger;
-use std::io::{BufRead, Read};
+mod logger;
 
 use crate::chrome_driver_launcher::ChromeDriverLauncher;
+use logger::Logger;
+use std::io::{BufRead, Read};
+use std::thread::sleep;
+use std::time::Duration;
 use thirtyfour::{DesiredCapabilities, WebDriver};
 use tokio::io::AsyncReadExt;
 
 async fn launch() {
     let capabilities = DesiredCapabilities::chrome();
-    let driver = WebDriver::new("http://localhost:9515", capabilities).await.expect("Failed to create driver");
+    let driver = WebDriver::new("http://localhost:9515", capabilities)
+        .await
+        .expect("Failed to create driver");
     driver.goto("https://www.google.com/").await.expect("Failed to go to google");
 }
 
@@ -48,13 +50,10 @@ async fn launch() {
 //     // return incomplete future
 // }
 
-
 #[tokio::main]
 async fn main() {
     Logger::init(log::LevelFilter::Trace);
-    let launcher = ChromeDriverLauncher::launch();
+    let launcher = ChromeDriverLauncher::launch("8888".to_string());
     let handle = tokio::spawn(launcher);
     fatal_unwrap_e!(handle.await, "Failed to launch chrome driver {}");
 }
-
-

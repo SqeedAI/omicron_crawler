@@ -1,30 +1,32 @@
 use std::future::Future;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::pin::Pin;
 use std::process;
 use std::task::{Context, Poll};
 
 pub struct ChromeDriverLauncher {
     child: process::Child,
-    stdout: process::ChildStdout,
-    stderr: process::ChildStderr,
+    stdout_reader: BufReader<process::ChildStdout>,
     stdout_str: String,
-    stderr_str: String,
+    port: String,
+    expected_output: String,
 }
 
 impl ChromeDriverLauncher {
-    pub fn launch() -> Self {
-        let mut cmd = process::Command::new("chromedriver-win64/chromedriver.exe");
-        cmd.args(["--port=9515"]);
-        let mut child = cmd.spawn().expect("Failed to start chromedriver");
-        let mut stdout = fatal_unwrap!(child.stdout.take(), "Failed to get stdout");
-        let mut stderr = fatal_unwrap!(child.stderr.take(), "Failed to get stderr");
+    pub fn launch(port: String) -> Self {
+        let mut cmd = process::Command::new("./chromedriver-win64/chromedriver.exe");
+        cmd.args([format!("--port={}", port)]);
+        cmd.stdout(process::Stdio::piped());
+        cmd.stderr(process::Stdio::piped());
+        let mut child = fatal_unwrap_e!(cmd.spawn(), "Failed to start chromedriver {}");
+        let stdout = fatal_unwrap!(child.stdout.take(), "Failed to get stdout");
+        let expected_output = format!("ChromeDriver was started successfully on port {}", port);
         Self {
             child,
-            stdout,
-            stderr,
+            stdout_reader: BufReader::new(stdout),
             stdout_str: String::new(),
-            stderr_str: String::new(),
+            port,
+            expected_output,
         }
     }
 }
@@ -40,21 +42,16 @@ impl Future for ChromeDriverLauncher {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let inner = self.get_mut();
-        const EXPECTED_OUTPUT: &str = "ChromeDriver was started successfully on port 9515";
-        let stdout = &mut inner.stdout;
-        let stderr = &mut inner.stderr;
-        fatal_unwrap_e!(stdout.read_to_string(&mut inner.stdout_str), "Failed to read stdout {}");
-        fatal_unwrap_e!(stderr.read_to_string(&mut inner.stderr_str), "Failed to read stderr {}");
 
-        if inner.stderr_str.len() > 0 {
-            error!("{}", inner.stderr_str);
-            return Poll::Ready(Err(()));
-        }
+        let stdout_reader = &mut inner.stdout_reader;
+        inner.stdout_str.clear();
+
+        fatal_unwrap_e!(stdout_reader.read_line(&mut inner.stdout_str), "Failed to read stdout {}");
 
         if inner.stdout_str.len() > 0 {
-            let option = inner.stdout_str.find(EXPECTED_OUTPUT);
+            info!("{}", inner.stdout_str);
+            let option = inner.stdout_str.find(&inner.expected_output);
             if option.is_some() {
-                info!("{}", inner.stdout_str);
                 return Poll::Ready(Ok(()));
             }
         }
