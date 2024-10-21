@@ -7,3 +7,4 @@ edition = "2021"
 thirtyfour = "0.34.0"
 tokio = { version = "1.40.0", features = ["full"] }
 log = "0.4.22"
+http = "1.1.0"
