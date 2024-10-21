@@ -3,9 +3,13 @@ use crate::EMAIL;
 use std::time::Duration;
 use thirtyfour::By;
 
-async fn handle_google_sign_in(selenium: Selenium) {
+pub async fn load_linkedin(selenium: Selenium) {
     let driver = &selenium.driver;
     fatal_unwrap_e!(driver.goto("https://www.linkedin.com/").await, "Failed to go to linkedin {}");
+}
+
+pub async fn handle_google_sign_in(selenium: Selenium) {
+    let driver = &selenium.driver;
     let element = fatal_unwrap_e!(
         driver.find(By::XPath("//*[@title='Sign in with Google Button']")).await,
         "Failed to find google sign in text {}"
