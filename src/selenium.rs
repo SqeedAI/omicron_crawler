@@ -1,74 +1,92 @@
+use crate::driver_ext::WebDriverExt;
+use crate::linkedin::actions::{set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::enums::{Functions, SeniorityLevel};
+use crate::EMAIL;
 use http::header::HeaderValue;
 use std::env::current_dir;
 use std::future::Future;
 use std::io::{BufRead, BufReader, Read};
 use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
+use std::time::Duration;
 use thirtyfour::common::capabilities::firefox::FirefoxPreferences;
 use thirtyfour::common::config::WebDriverConfigBuilder;
-use thirtyfour::{ChromiumLikeCapabilities, DesiredCapabilities, WebDriver};
+use thirtyfour::{By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver};
 use tokio::sync::oneshot;
 
-pub struct Selenium {
-    child: Child,
-    pub port: String,
-    pub driver: WebDriver,
+pub struct SeleniumLinkedin {
+    driver_ext: WebDriverExt,
 }
 
-impl Selenium {
+impl SeleniumLinkedin {
     pub async fn new(port: String) -> Self {
-        let mut cmd = Command::new("./drivers/chromedriver.exe");
-        cmd.arg(format!("--port={}", port));
-        cmd.stdout(Stdio::piped());
-
-        let mut child = fatal_unwrap_e!(cmd.spawn(), "Failed to start chromedriver {}");
-        let stdout = child.stdout.take().expect("Failed to get stdout");
-
-        let (tx, rx) = oneshot::channel();
-
-        let port_clone = port.clone();
-
-        tokio::spawn(async move {
-            let expected_output = format!("ChromeDriver was started successfully on port {}", port_clone);
-
-            let mut reader = BufReader::new(stdout);
-            let mut out_str = String::new();
-            fatal_unwrap_e!(reader.read_line(&mut out_str), "Failed to read line {}");
-
-            loop {
-                println!("{}", out_str);
-                if out_str.contains(&expected_output) {
-                    fatal_unwrap_e!(tx.send(()), "Failed to notify on success! {:?}");
-                    break;
-                }
-                out_str.clear();
-                fatal_unwrap_e!(reader.read_line(&mut out_str), "Failed to read line {}");
-            }
-        });
-
-        // Wait for the expected output or timeout
-        tokio::select! {
-            _ = rx => {
-                let mut caps = DesiredCapabilities::chrome();
-                let mut curent_dir = current_dir().unwrap();
-                curent_dir.push("user_data");
-
-                let user_data_dir = curent_dir.to_str().unwrap();
-                let arg = format!("user-data-dir={}", user_data_dir);
-                caps.add_arg(arg.as_str()).unwrap();
-                let driver = fatal_unwrap_e!(WebDriver::new("http://localhost:8888", caps).await, "Failed to create driver {}");
-                Self{
-                    child,
-                    port,
-                    driver
-                }
-            },
-        }
+        let driver_ext = WebDriverExt::new(port, "./drivers/chromedriver.exe").await;
+        Self { driver_ext }
     }
-}
+    pub async fn load_linkedin(&self) {
+        let driver_ext = &self.driver_ext;
+        fatal_unwrap_e!(
+            driver_ext.driver.goto("https://www.linkedin.com/").await,
+            "Failed to go to linkedin {}"
+        );
+    }
 
-impl Drop for Selenium {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
+    pub async fn handle_google_sign_in(&self) {
+        let driver_ext = &self.driver_ext;
+        let element = fatal_unwrap_e!(
+            driver_ext.driver.find(By::XPath("//*[@title='Sign in with Google Button']")).await,
+            "Failed to find google sign in text {}"
+        );
+        let parent = fatal_unwrap_e!(element.parent().await, "failed to get parent {}");
+        let button = fatal_unwrap_e!(parent.find(By::XPath("./child::*[1]")).await, "Failed to find children elements {}");
+        let window_handles = fatal_unwrap_e!(driver_ext.driver.windows().await, "Failed to get window handles {}");
+        let main_window_handle = &window_handles[0];
+        fatal_unwrap_e!(button.click().await, "Failed to click google sign in button {}");
+        let window_handles = fatal_unwrap_e!(driver_ext.driver.windows().await, "Failed to get window handles {}");
+        let mut second_window_handle = None;
+        for handle in window_handles.iter() {
+            if handle != main_window_handle {
+                second_window_handle = Some(handle);
+            }
+        }
+        let second_window_handle_found = fatal_unwrap!(second_window_handle, "Failed to find sign in window");
+        fatal_unwrap_e!(
+            driver_ext.driver.switch_to_window(second_window_handle_found.clone()).await,
+            "Failed to switch to window {}"
+        );
+        let email_element = fatal_unwrap_e!(
+            driver_ext.driver.find(By::Id("identifierId")).await,
+            "Failed to find email element {}"
+        );
+        fatal_unwrap_e!(email_element.send_keys(EMAIL).await, "Failed to send email {}");
+        let next_button = fatal_unwrap_e!(
+            driver_ext
+                .driver
+                .find(By::XPath(
+                    "/html/body/div[1]/div[1]/div[2]/c-wiz/div/div[3]/div/div[1]/div/div/button"
+                ))
+                .await,
+            "Failed to find next button {}"
+        );
+        next_button.click().await.unwrap();
+        tokio::time::sleep(Duration::from_secs(15)).await;
+    }
+    pub async fn perform_search(
+        &self,
+        function: Functions,
+        job_title: String,
+        geography: Option<String>,
+        seniority_level: Option<SeniorityLevel>,
+    ) {
+        let driver_ext = &self.driver_ext;
+        fatal_unwrap_e!(
+            driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await,
+            "Failed to go to linkedin {}"
+        );
+        set_function_search(driver_ext, function).await;
+        set_job_title_search(driver_ext, job_title).await;
+        if let Some(geography) = geography {
+            set_geography_search(driver_ext, geography).await;
+        }
     }
 }
