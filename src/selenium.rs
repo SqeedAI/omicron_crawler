@@ -1,18 +1,9 @@
 use crate::driver_ext::WebDriverExt;
-use crate::linkedin::actions::{set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::actions::{parse_profiles, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::enums::{Functions, SeniorityLevel};
 use crate::EMAIL;
-use http::header::HeaderValue;
-use std::env::current_dir;
-use std::future::Future;
-use std::io::{BufRead, BufReader, Read};
-use std::pin::Pin;
-use std::process::{Child, Command, Stdio};
 use std::time::Duration;
-use thirtyfour::common::capabilities::firefox::FirefoxPreferences;
-use thirtyfour::common::config::WebDriverConfigBuilder;
-use thirtyfour::{By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver};
-use tokio::sync::oneshot;
+use thirtyfour::By;
 
 pub struct SeleniumLinkedin {
     driver_ext: WebDriverExt,
@@ -30,7 +21,6 @@ impl SeleniumLinkedin {
             "Failed to go to linkedin {}"
         );
     }
-
     pub async fn handle_google_sign_in(&self) {
         let driver_ext = &self.driver_ext;
         let element = fatal_unwrap_e!(
@@ -88,5 +78,9 @@ impl SeleniumLinkedin {
         if let Some(geography) = geography {
             set_geography_search(driver_ext, geography).await;
         }
+    }
+    pub async fn parse_profiles(&self) {
+        let driver_ext = &self.driver_ext;
+        parse_profiles(driver_ext).await;
     }
 }

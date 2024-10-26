@@ -11,7 +11,6 @@ use crate::linkedin::enums::Functions::Engineering;
 use crate::selenium::SeleniumLinkedin;
 use logger::Logger;
 use std::io::{BufRead, Read};
-use std::time::Duration;
 use tokio::io::AsyncReadExt;
 
 pub const EMAIL: &str = "jotogi2299@gmail.com";
@@ -24,5 +23,5 @@ async fn main() {
     selenium
         .perform_search(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()), None)
         .await;
-    tokio::time::sleep(Duration::from_secs(30)).await;
+    selenium.parse_profiles().await;
 }

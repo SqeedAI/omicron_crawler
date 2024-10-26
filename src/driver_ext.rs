@@ -6,6 +6,7 @@ use std::time::Duration;
 use thirtyfour::error::{WebDriverError, WebDriverResult};
 use thirtyfour::{By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver, WebElement};
 use tokio::sync::oneshot;
+use undetected_chromedriver::chrome;
 
 pub struct WebDriverExt {
     child: Child,
@@ -19,7 +20,7 @@ impl WebDriverExt {
         cmd.arg(format!("--port={}", port));
         cmd.stdout(Stdio::piped());
 
-        let mut child = fatal_unwrap_e!(cmd.spawn(), "Failed to start chromedriver {}");
+        let mut child: Child = fatal_unwrap_e!(cmd.spawn(), "Failed to start chromedriver {}");
         let stdout = child.stdout.take().expect("Failed to get stdout");
 
         let (tx, rx) = oneshot::channel();
