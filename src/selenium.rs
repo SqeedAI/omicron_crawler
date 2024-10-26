@@ -1,6 +1,7 @@
 use crate::driver_ext::WebDriverExt;
 use crate::linkedin::actions::{parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::enums::{Functions, SeniorityLevel};
+use crate::linkedin::profiles::SearchResult;
 use crate::EMAIL;
 use std::time::Duration;
 use thirtyfour::By;
@@ -84,8 +85,8 @@ impl SeleniumLinkedin {
         driver_ext.driver.goto("https://demo.fingerprint.com/playground").await.unwrap();
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
-    pub async fn parse_profiles(&self) {
+    pub async fn parse_search(&self) -> Vec<SearchResult> {
         let driver_ext = &self.driver_ext;
-        parse_search(driver_ext).await;
+        parse_search(driver_ext).await
     }
 }

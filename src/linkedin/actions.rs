@@ -1,6 +1,7 @@
 use crate::driver_ext::WebDriverExt;
 use crate::linkedin::enums::Functions;
-use crate::linkedin::profiles::SearchResult;
+use crate::linkedin::profiles::{Profile, SearchResult};
+use crate::utils::get_domain_url;
 use std::time::Duration;
 use thirtyfour::common::action::KeyAction::KeyDown;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
@@ -91,6 +92,7 @@ pub async fn set_geography_search(driver: &WebDriverExt, geography: String) {
 }
 
 pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
+    let domain_url = get_domain_url(driver.driver.current_url().await.unwrap().as_str());
     let search_list: WebElement = fatal_unwrap_e!(
         driver
             .find_until_loaded(By::Id("search-results-container"), Duration::from_secs(5))
@@ -125,14 +127,82 @@ pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
             "Failed to find title span {}"
         );
 
+        let a_element = fatal_unwrap_e!(name_span.parent().await, "Failed to find parent element {}");
+        let a_href = fatal_unwrap_e!(a_element.attr("href").await, "Failed to get href attribute {}").unwrap();
+        let url = format!("{}{}", domain_url, a_href);
+
         results.push(SearchResult {
             name: name_span.text().await.unwrap(),
             title: title_span.text().await.unwrap(),
-            sales_url: format!(
-                "https://www.linkedin.com/sales/search/results/profile/{}",
-                name_span.text().await.unwrap()
-            ),
+            sales_url: url,
         });
     }
-    return results;
+    results
+}
+
+pub async fn parse_sales_profile(driver: &WebDriverExt, sales_url: &str) -> Profile {
+    let domain_url = get_domain_url(driver.driver.current_url().await.unwrap().as_str());
+    let sales_url = format!("{}{}", domain_url, sales_url);
+    driver.driver.goto(sales_url).await.unwrap();
+    let name_span: WebElement = fatal_unwrap_e!(
+        driver
+            .find_until_loaded(By::XPath(".//span[@data-anonymize='person-name']"), Duration::from_secs(5))
+            .await,
+        "Failed to find name span after scrolling {}"
+    );
+    let profile_options = fatal_unwrap_e!(
+        driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await,
+        "Failed to find profile options {}"
+    );
+
+    fatal_unwrap_e!(profile_options.click().await, "Failed to click profile options {}");
+
+    let linkedin_url_element = fatal_unwrap_e!(
+        driver
+            .find_until_loaded(By::XPath("//*[@id='hue-menu-ember51']"), Duration::from_secs(5))
+            .await,
+        "Failed to find linkedin url element {}"
+    );
+    let linkedin_url = linkedin_url_element.attr("href").await.unwrap().unwrap();
+    let description_element = fatal_unwrap_e!(
+        driver
+            .find_until_loaded(By::XPath(".//span[@data-anonymize='headline']"), Duration::from_secs(5))
+            .await,
+        "Failed to find name span after scrolling {}"
+    );
+
+    let show_more_button = fatal_unwrap_e!(
+        driver
+            .driver
+            .find(By::XPath(
+                "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[2]/div/span[2]/button/span"
+            ),)
+            .await,
+        "Failed to find show more button {}"
+    );
+    show_more_button.scroll_into_view().await.unwrap();
+    show_more_button.click().await.unwrap();
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    let about = fatal_unwrap_e!(
+        driver
+            .driver
+            .find(By::XPath("/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[2]/p"))
+            .await,
+        "Failed to find about element {}"
+    );
+
+    Profile {
+        name: name_span.text().await.unwrap(),
+        url: linkedin_url,
+        description: description_element.text().await.unwrap(),
+        about: String::new(),
+        location: String::new(),
+        connections: String::new(),
+        experience: Vec::new(),
+        education: Vec::new(),
+        skills: Vec::new(),
+        languages: Vec::new(),
+        industry: String::new(),
+        seniority: String::new(),
+    }
 }

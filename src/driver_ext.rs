@@ -109,6 +109,7 @@ pub fn patch_cdc(chromedriver_path: &str) {
     let mut driver_binary = fatal_unwrap_e!(fs::read(chromedriver_path), "Failed to read chromedriver binary {}");
     let pattern = b"cdc_";
     let new_cdc = generate_random_string(CDC_SIZE);
+    // TODO use strings instead of bytes
     let mut matches = Vec::with_capacity(3);
     for (index, window) in driver_binary.windows(pattern.len()).enumerate() {
         if window == pattern {

@@ -24,5 +24,5 @@ async fn main() {
     selenium
         .perform_search(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()), None)
         .await;
-    selenium.parse_profiles().await;
+    let results = selenium.parse_search().await;
 }
