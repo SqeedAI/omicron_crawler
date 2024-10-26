@@ -6,6 +6,7 @@ pub mod driver_ext;
 mod linkedin;
 mod logger;
 mod selenium;
+mod utils;
 
 use crate::linkedin::enums::Functions::Engineering;
 use crate::selenium::SeleniumLinkedin;

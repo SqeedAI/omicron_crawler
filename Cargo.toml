@@ -9,4 +9,5 @@ tokio = { version = "1.40.0", features = ["full"] }
 log = "0.4.22"
 http = "1.1.0"
 undetected-chromedriver = "0.1.2"
+rand = "0.8.5"
 

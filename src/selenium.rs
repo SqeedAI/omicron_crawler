@@ -1,5 +1,5 @@
 use crate::driver_ext::WebDriverExt;
-use crate::linkedin::actions::{parse_profiles, set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::actions::{parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::enums::{Functions, SeniorityLevel};
 use crate::EMAIL;
 use std::time::Duration;
@@ -79,8 +79,13 @@ impl SeleniumLinkedin {
             set_geography_search(driver_ext, geography).await;
         }
     }
+    pub async fn test_detection(&self) {
+        let driver_ext = &self.driver_ext;
+        driver_ext.driver.goto("https://demo.fingerprint.com/playground").await.unwrap();
+        tokio::time::sleep(Duration::from_secs(15)).await;
+    }
     pub async fn parse_profiles(&self) {
         let driver_ext = &self.driver_ext;
-        parse_profiles(driver_ext).await;
+        parse_search(driver_ext).await;
     }
 }

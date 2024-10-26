@@ -1,10 +1,13 @@
 use crate::selenium::SeleniumLinkedin;
+use crate::utils::generate_random_string;
 use std::env::current_dir;
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
+use std::sync::Once;
 use std::time::Duration;
+use std::{fs, mem};
 use thirtyfour::error::{WebDriverError, WebDriverResult};
-use thirtyfour::{By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver, WebElement};
+use thirtyfour::{BrowserCapabilitiesHelper, By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver, WebElement};
 use tokio::sync::oneshot;
 use undetected_chromedriver::chrome;
 
@@ -16,6 +19,7 @@ pub struct WebDriverExt {
 
 impl WebDriverExt {
     pub async fn new(port: String, chromedriver_path: &str) -> Self {
+        patch_cdc(chromedriver_path);
         let mut cmd = Command::new(chromedriver_path);
         cmd.arg(format!("--port={}", port));
         cmd.stdout(Stdio::piped());
@@ -50,6 +54,11 @@ impl WebDriverExt {
                 let mut caps = DesiredCapabilities::chrome();
                 let mut curent_dir = current_dir().unwrap();
                 curent_dir.push("user_data");
+                let initial_args = get_undetected_chromedriver_args();
+                for arg in initial_args.iter() {
+                    fatal_unwrap_e!(caps.add_arg(*arg), "Failed to add arg {}");
+                }
+                fatal_unwrap_e!(caps.add_experimental_option("excludeSwitches", ["enable-automation"]), "Failed to add experimental excludeSwitches option {}");
 
                 let user_data_dir = curent_dir.to_str().unwrap();
                 let arg = format!("user-data-dir={}", user_data_dir);
@@ -77,6 +86,50 @@ impl WebDriverExt {
 
         Err(WebDriverError::Timeout("element not found. Timed out!".to_string()))
     }
+}
+
+pub fn get_undetected_chromedriver_args() -> Vec<&'static str> {
+    vec![
+        "--disable-blink-features=AutomationControlled",
+        "--disable-infobars",
+        "--disable-notifications",
+        "--disable-popup-blocking",
+        "--disable-extensions",
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+        "--window-size=1920,1080",
+        "--start-maximized",
+        "--ignore-certificate-errors",
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    ]
+}
+
+pub fn patch_cdc(chromedriver_path: &str) {
+    const CDC_SIZE: usize = 22;
+    let mut driver_binary = fatal_unwrap_e!(fs::read(chromedriver_path), "Failed to read chromedriver binary {}");
+    let pattern = b"cdc_";
+    let new_cdc = generate_random_string(CDC_SIZE);
+    let mut matches = Vec::with_capacity(3);
+    for (index, window) in driver_binary.windows(pattern.len()).enumerate() {
+        if window == pattern {
+            matches.push(index);
+        }
+    }
+    if matches.len() == 0 {
+        info!("no cdc matches found, no need to patch!");
+        return;
+    }
+
+    let first_match = unsafe { String::from_raw_parts(driver_binary.as_mut_ptr().add(matches[0]), CDC_SIZE, CDC_SIZE) };
+    info!("Replacing {} with {}", first_match, new_cdc);
+    mem::forget(first_match);
+
+    for index in matches {
+        let mut cdc_str = unsafe { String::from_raw_parts(driver_binary.as_mut_ptr().add(index), CDC_SIZE, CDC_SIZE) };
+        cdc_str.replace_range(0..CDC_SIZE, &new_cdc);
+        mem::forget(cdc_str);
+    }
+    fs::write(chromedriver_path, driver_binary).unwrap();
 }
 
 impl Drop for WebDriverExt {

@@ -1,5 +1,6 @@
 use crate::driver_ext::WebDriverExt;
 use crate::linkedin::enums::Functions;
+use crate::linkedin::profiles::SearchResult;
 use std::time::Duration;
 use thirtyfour::common::action::KeyAction::KeyDown;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
@@ -89,7 +90,7 @@ pub async fn set_geography_search(driver: &WebDriverExt, geography: String) {
     input_field.send_keys(Key::Enter).await.unwrap();
 }
 
-pub async fn parse_profiles(driver: &WebDriverExt) {
+pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
     let search_list: WebElement = fatal_unwrap_e!(
         driver
             .find_until_loaded(By::Id("search-results-container"), Duration::from_secs(5))
@@ -103,7 +104,7 @@ pub async fn parse_profiles(driver: &WebDriverExt) {
         "Failed to find direct child li elements {}"
     );
     trace!("Found {} profiles", li_elements.len());
-
+    let mut results = Vec::with_capacity(li_elements.len());
     for li_element in li_elements {
         let name_span_result = li_element.find(By::XPath(".//span[@data-anonymize='person-name']")).await;
         let name_span: WebElement;
@@ -124,7 +125,14 @@ pub async fn parse_profiles(driver: &WebDriverExt) {
             "Failed to find title span {}"
         );
 
-        info!("Name: {}", name_span.text().await.unwrap());
-        info!("Title: {}\n", title_span.text().await.unwrap());
+        results.push(SearchResult {
+            name: name_span.text().await.unwrap(),
+            title: title_span.text().await.unwrap(),
+            sales_url: format!(
+                "https://www.linkedin.com/sales/search/results/profile/{}",
+                name_span.text().await.unwrap()
+            ),
+        });
     }
+    return results;
 }
