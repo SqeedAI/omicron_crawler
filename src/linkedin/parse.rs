@@ -1,6 +1,6 @@
 use crate::driver_ext::WebDriverExt;
 use crate::linkedin::enums::Functions;
-use crate::linkedin::profiles::{Profile, SearchResult};
+use crate::linkedin::profiles::{Experience, Profile, SearchResult};
 use crate::utils::get_domain_url;
 use std::time::Duration;
 use thirtyfour::common::action::KeyAction::KeyDown;
@@ -140,18 +140,84 @@ pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
     results
 }
 
-pub async fn parse_sales_profile(driver: &WebDriverExt, sales_url: &str) -> Profile {
-    let domain_url = get_domain_url(driver.driver.current_url().await.unwrap().as_str());
-    let sales_url = format!("{}{}", domain_url, sales_url);
-    driver.driver.goto(sales_url).await.unwrap();
+pub async fn parse_profile_about(driver: &WebDriverExt) -> Option<String> {
+    let possible_about_title = driver.driver.find(By::XPath("//h1[normalize-space()='About']")).await;
+    if let Err((err)) = possible_about_title {
+        info!("No about section found.");
+        return None;
+    }
+    let about_title = possible_about_title.unwrap();
+    about_title.scroll_into_view().await.unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    //Check if show more is needed to click
+    let parent = about_title.parent().await.unwrap();
+    let possible_show_more_button = parent.find(By::XPath(".//div/span/button")).await;
+
+    // In case we have show more, then the text element is also p instead of span
+    if let Ok(show_more_button) = possible_show_more_button {
+        trace!("Show more button found. Clicking...");
+        fatal_unwrap_e!(show_more_button.click().await, "Failed to click show more button {}");
+        let about_p = fatal_unwrap_e!(parent.find(By::XPath("./p")).await, "Failed to find about p {}");
+        return Some(about_p.text().await.unwrap().replace("Show less", ""));
+    }
+    trace!("No show more button found.");
+
+    //In case we don't have show more, then the text element is span
+    let about_span = fatal_unwrap_e!(parent.find(By::XPath(".//div/span")).await, "Failed to find about span {}");
+    Some(about_span.text().await.unwrap())
+}
+pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> {
+    let possible_experience_title = driver.driver.find(By::XPath("//h2[contains(., 'experience')]")).await;
+    let mut results = Vec::new();
+    if let Err((err)) = possible_experience_title {
+        info!("No experience section found.");
+        return None;
+    }
+    let experience = possible_experience_title.unwrap();
+    experience.scroll_into_view().await.unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let experience_parent = fatal_unwrap_e!(experience.parent().await, "Failed to find experience parent {}");
+    let experience_ul = fatal_unwrap_e!(experience_parent.find(By::XPath("./ul")).await, "Failed to find experience ul {}");
+    let experience_list = fatal_unwrap_e!(experience_ul.find_all(By::XPath("./li")).await, "Failed to find experience list {}");
+    for experience_entry in experience_list {
+        let experience = parse_experience_entry(experience_entry).await;
+        if let Some(experience) = experience {
+            results.push(experience);
+        }
+    }
+
+    Some(results)
+}
+
+pub async fn parse_experience_entry(experience_entry: WebElement) -> Option<Experience> {
+    let possible_timeline = experience_entry.find(By::XPath("./ul")).await;
+    if let Ok(timeline) = possible_timeline {
+        trace!("Timeline found.");
+    }
+
+    let job_title = fatal_unwrap_e!(
+        experience_entry.find(By::XPath(".//h2")).await,
+        "Failed to find experience title {}"
+    );
+    let title = job_title.text().await.unwrap();
+    Some(Experience {
+        title,
+        start: String::new(),
+        end: String::new(),
+    })
+}
+
+pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str) -> Profile {
+    driver.driver.goto(sales_profile_url).await.unwrap();
     let name_span: WebElement = fatal_unwrap_e!(
         driver
-            .find_until_loaded(By::XPath(".//span[@data-anonymize='person-name']"), Duration::from_secs(5))
+            .find_until_loaded(By::XPath(".//h1[@data-anonymize='person-name']"), Duration::from_secs(5))
             .await,
         "Failed to find name span after scrolling {}"
     );
     let profile_options = fatal_unwrap_e!(
-        driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await,
+        driver.driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await,
         "Failed to find profile options {}"
     );
 
@@ -159,50 +225,42 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_url: &str) -> Prof
 
     let linkedin_url_element = fatal_unwrap_e!(
         driver
-            .find_until_loaded(By::XPath("//*[@id='hue-menu-ember51']"), Duration::from_secs(5))
+            .find_until_loaded(By::XPath("/html/body/div[1]/div[2]/ul/li[2]/a"), Duration::from_secs(5))
             .await,
         "Failed to find linkedin url element {}"
     );
     let linkedin_url = linkedin_url_element.attr("href").await.unwrap().unwrap();
+    // To close the menu
+    driver.driver.action_chain().send_keys(Key::Escape).perform().await.unwrap();
     let description_element = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(By::XPath(".//span[@data-anonymize='headline']"), Duration::from_secs(5))
-            .await,
+        driver.driver.find(By::XPath(".//span[@data-anonymize='headline']")).await,
         "Failed to find name span after scrolling {}"
     );
 
-    let show_more_button = fatal_unwrap_e!(
+    let location = fatal_unwrap_e!(
         driver
             .driver
             .find(By::XPath(
-                "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[2]/div/span[2]/button/span"
-            ),)
+                "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[1]/div[4]/div[1]"
+            ))
             .await,
-        "Failed to find show more button {}"
-    );
-    show_more_button.scroll_into_view().await.unwrap();
-    show_more_button.click().await.unwrap();
-    tokio::time::sleep(Duration::from_millis(700)).await;
-    let about = fatal_unwrap_e!(
-        driver
-            .driver
-            .find(By::XPath("/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[2]/p"))
-            .await,
-        "Failed to find about element {}"
+        "Failed to find location span after scrolling {}"
     );
 
+    let about = parse_profile_about(driver).await;
+    let experience = parse_experience(driver).await;
+
     Profile {
-        name: name_span.text().await.unwrap(),
+        name: name_span.text().await.unwrap().to_string(),
         url: linkedin_url,
         description: description_element.text().await.unwrap(),
-        about: String::new(),
-        location: String::new(),
+        about,
+        location: location.text().await.unwrap(),
         connections: String::new(),
-        experience: Vec::new(),
-        education: Vec::new(),
+        experience,
+        education: None,
         skills: Vec::new(),
         languages: Vec::new(),
         industry: String::new(),
-        seniority: String::new(),
     }
 }

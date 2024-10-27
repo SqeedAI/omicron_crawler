@@ -1,10 +1,11 @@
 use crate::driver_ext::WebDriverExt;
-use crate::linkedin::actions::{parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::enums::{Functions, SeniorityLevel};
-use crate::linkedin::profiles::SearchResult;
+use crate::linkedin::parse::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::profiles::{Profile, SearchResult};
 use crate::EMAIL;
+use std::result;
 use std::time::Duration;
-use thirtyfour::By;
+use thirtyfour::{By, WindowType};
 
 pub struct SeleniumLinkedin {
     driver_ext: WebDriverExt,
@@ -88,5 +89,16 @@ impl SeleniumLinkedin {
     pub async fn parse_search(&self) -> Vec<SearchResult> {
         let driver_ext = &self.driver_ext;
         parse_search(driver_ext).await
+    }
+
+    pub async fn parse_profile(&self, sales_url: &str) -> Profile {
+        let driver_ext = &self.driver_ext;
+        let original_tab = driver_ext.driver.window().await.unwrap();
+        let new_window_handle = driver_ext.driver.new_tab().await.unwrap();
+        driver_ext.driver.switch_to_window(new_window_handle).await.unwrap();
+        let result = parse_sales_profile(driver_ext, sales_url).await;
+        driver_ext.driver.close_window().await.unwrap();
+        driver_ext.driver.switch_to_window(original_tab).await.unwrap();
+        result
     }
 }
