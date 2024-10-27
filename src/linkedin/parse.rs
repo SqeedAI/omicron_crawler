@@ -175,37 +175,64 @@ pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> 
         return None;
     }
     let experience = possible_experience_title.unwrap();
-    experience.scroll_into_view().await.unwrap();
-    tokio::time::sleep(Duration::from_millis(100)).await;
     let experience_parent = fatal_unwrap_e!(experience.parent().await, "Failed to find experience parent {}");
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    experience_parent.scroll_into_view().await.unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
     let experience_ul = fatal_unwrap_e!(experience_parent.find(By::XPath("./ul")).await, "Failed to find experience ul {}");
     let experience_list = fatal_unwrap_e!(experience_ul.find_all(By::XPath("./li")).await, "Failed to find experience list {}");
     for experience_entry in experience_list {
-        let experience = parse_experience_entry(experience_entry).await;
-        if let Some(experience) = experience {
-            results.push(experience);
-        }
+        parse_experience_entry(experience_entry, &mut results).await;
     }
 
     Some(results)
 }
 
-pub async fn parse_experience_entry(experience_entry: WebElement) -> Option<Experience> {
+pub async fn parse_timeline(timeline: WebElement, results: &mut Vec<Experience>) {
+    let experience_entries = fatal_unwrap_e!(timeline.find_all(By::XPath("./li")).await, "Failed to find experience list {}");
+    for experience_entry in experience_entries {
+        let title = fatal_unwrap_e!(
+            experience_entry.find(By::XPath(".//h3")).await,
+            "Failed to find experience title {}"
+        );
+        let time = fatal_unwrap_e!(
+            experience_entry.find(By::XPath("./div/p[1]/span")).await,
+            "Failed to find experience duration {}"
+        );
+        let time_text = time.text().await.unwrap();
+        let (start, end) = time_text.split_once("–").unwrap();
+        results.push(Experience {
+            position: title.text().await.unwrap(),
+            start: start.to_string(),
+            end: end.to_string(),
+        });
+    }
+}
+
+pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut Vec<Experience>) {
     let possible_timeline = experience_entry.find(By::XPath("./ul")).await;
     if let Ok(timeline) = possible_timeline {
         trace!("Timeline found.");
+        parse_timeline(timeline, result).await;
+        return;
     }
 
     let job_title = fatal_unwrap_e!(
         experience_entry.find(By::XPath(".//h2")).await,
         "Failed to find experience title {}"
     );
+    let time = fatal_unwrap_e!(
+        experience_entry.find(By::XPath(".//p/span")).await,
+        "Failed to find experience duration {}"
+    );
+    let time_text = time.text().await.unwrap();
+    let (start, end) = time_text.split_once("–").unwrap();
     let title = job_title.text().await.unwrap();
-    Some(Experience {
-        title,
-        start: String::new(),
-        end: String::new(),
-    })
+    result.push(Experience {
+        position: title,
+        start: start.to_string(),
+        end: end.to_string(),
+    });
 }
 
 pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str) -> Profile {
@@ -261,6 +288,5 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
         education: None,
         skills: Vec::new(),
         languages: Vec::new(),
-        industry: String::new(),
     }
 }

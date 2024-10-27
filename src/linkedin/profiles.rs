@@ -54,13 +54,13 @@ impl Display for Profile {
 
 #[derive(Debug)]
 pub struct Experience {
-    pub title: String,
+    pub position: String,
     pub start: String,
     pub end: String,
 }
 impl Display for Experience {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "title: {} {} - {}", self.title, self.start, self.end)
+        write!(f, "title: {} {} - {}", self.position, self.start, self.end)
     }
 }
 #[derive(Debug)]
