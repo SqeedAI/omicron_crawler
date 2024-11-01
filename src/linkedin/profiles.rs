@@ -21,7 +21,7 @@ pub struct Profile {
     pub connections: String,
     pub experience: Option<Vec<Experience>>,
     pub education: Option<Vec<Education>>,
-    pub skills: Vec<String>,
+    pub skills: Option<Vec<Skill>>,
     pub languages: Vec<Language>,
 }
 impl Display for Profile {
@@ -37,15 +37,21 @@ impl Display for Profile {
         }
 
         if let Some(experience) = &self.experience {
-            write!(f, "\tExperience:\n")?;
+            write!(f, "Experience:\n")?;
             for experience in experience.iter() {
-                write!(f, "\t{}\n", *experience)?;
+                write!(f, "{}\n", *experience)?;
             }
         }
         if let Some(education) = &self.education {
-            write!(f, "\tEducation:\n")?;
+            write!(f, "Education:\n")?;
             for education in education.iter() {
-                write!(f, "\t{}\n", *education)?;
+                write!(f, "{}\n", *education)?;
+            }
+        }
+        if let Some(skills) = &self.skills {
+            write!(f, "Skills:\n")?;
+            for skill in skills.iter() {
+                write!(f, "{}\n", *skill)?;
             }
         }
         Ok(())
@@ -55,31 +61,42 @@ impl Display for Profile {
 #[derive(Debug)]
 pub struct Experience {
     pub position: String,
-    pub start: String,
-    pub end: String,
+    pub interval: Interval,
 }
 impl Display for Experience {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "title: {} {} - {}", self.position, self.start, self.end)
+        write!(f, "title: {} {}", self.position, self.interval)
     }
 }
 #[derive(Debug)]
 pub struct Education {
     pub title: String,
+    pub field: String,
     pub degree: String,
-    pub duration: Duration,
+    pub interval: Interval,
 }
 impl Display for Education {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "title: {} degree: {} duration: {:?}", self.title, self.degree, self.duration)
+        write!(f, "title: {}\ndegree: {}\nduration: {:?}", self.title, self.degree, self.interval)
     }
 }
 #[derive(Debug)]
-pub struct Duration {
+pub struct Interval {
     pub start: String,
     pub end: String,
 }
-impl Display for Duration {
+
+impl Interval {
+    pub fn from_str(s: &str, delimiter: &str) -> Result<Self, &'static str> {
+        s.split_once(delimiter)
+            .map(|(start, end)| Interval {
+                start: start.to_string(),
+                end: end.to_string(),
+            })
+            .ok_or("failed to find delimiter")
+    }
+}
+impl Display for Interval {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "start: {} end: {}", self.start, self.end)
     }
@@ -93,5 +110,16 @@ pub struct Language {
 impl Display for Language {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "language: {} fluency: {}", self.language, self.fluency)
+    }
+}
+
+#[derive(Debug)]
+pub struct Skill {
+    pub name: String,
+    pub endorsements: u16,
+}
+impl Display for Skill {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "skill: {} endorsements: {}", self.name, self.endorsements)
     }
 }
