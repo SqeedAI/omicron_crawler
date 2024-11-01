@@ -7,3 +7,5 @@ pub mod driver_ext;
 pub mod linkedin;
 pub mod logger;
 pub mod utils;
+
+mod errors;
