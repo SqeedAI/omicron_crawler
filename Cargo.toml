@@ -12,3 +12,9 @@ undetected-chromedriver = "0.1.2"
 rand = "0.8.5"
 regex = "1.11.0"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "omicron_crawler"
+path = "src/main.rs"

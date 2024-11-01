@@ -1,22 +1,9 @@
 #[macro_use]
 extern crate log;
-#[macro_use]
-mod macros;
-pub mod driver_ext;
-mod linkedin;
-mod logger;
-mod selenium;
-mod utils;
 
-use crate::linkedin::profiles::SearchResult;
-use crate::selenium::SeleniumLinkedin;
-use logger::Logger;
-use std::io::{BufRead, Read};
-use tokio::io::AsyncReadExt;
-
-pub const EMAIL: &str = "jotogi2299@gmail.com";
-pub const PASS: &str = "CR3RnozvZydacGVGGsaR";
-//"./drivers/chromedriver.exe"
+use omicron_crawler::linkedin::crawler::Crawler;
+use omicron_crawler::linkedin::profiles::SearchResult;
+use omicron_crawler::logger::Logger;
 
 //TODO
 // 1. Create a generic error handler macro that will generically handle cases like not found / stale element / etc
@@ -25,7 +12,7 @@ pub const PASS: &str = "CR3RnozvZydacGVGGsaR";
 #[tokio::main]
 async fn main() {
     Logger::init(log::LevelFilter::Trace);
-    let selenium = SeleniumLinkedin::new("8888".to_string()).await;
+    let selenium = Crawler::new("8888".to_string()).await;
     // selenium
     //     .perform_search(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()), None)
     //     .await;
@@ -40,4 +27,5 @@ async fn main() {
     let first = results.first().unwrap();
     let profile = selenium.parse_profile(&first.sales_url).await;
     println!("{}", profile);
+    selenium.cleanup().await;
 }

@@ -1,3 +1,4 @@
+pub mod crawler;
 pub mod enums;
 pub mod parse;
-pub(crate) mod profiles;
+pub mod profiles;

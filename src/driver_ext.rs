@@ -1,14 +1,15 @@
-use crate::selenium::SeleniumLinkedin;
+use crate::linkedin::crawler::Crawler;
 use crate::utils::generate_random_string;
 use std::env::current_dir;
 use std::io::{BufRead, BufReader};
+use std::marker::PhantomData;
 use std::process::{Child, Command, Stdio};
 use std::sync::Once;
 use std::time::Duration;
-use std::{fs, mem};
+use std::{fs, future, mem};
 use thirtyfour::error::{WebDriverError, WebDriverResult};
 use thirtyfour::{BrowserCapabilitiesHelper, By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver, WebElement};
-use tokio::sync::oneshot;
+use tokio::sync::{futures, oneshot};
 use undetected_chromedriver::chrome;
 
 pub struct WebDriverExt {
@@ -18,6 +19,14 @@ pub struct WebDriverExt {
 }
 
 impl WebDriverExt {
+    pub async fn cleanup(&self) {
+        let driver = unsafe { std::ptr::read(&self.driver) };
+        let mut child = unsafe { std::ptr::read(&self.child) };
+        if let Err(e) = driver.quit().await {
+            error!("Failed to quit the WebDriver: {}", e);
+        }
+        child.kill().unwrap();
+    }
     pub async fn new(port: String, chromedriver_path: &str) -> Self {
         patch_cdc(chromedriver_path);
         let mut cmd = Command::new(chromedriver_path);
@@ -63,7 +72,7 @@ impl WebDriverExt {
                 let user_data_dir = curent_dir.to_str().unwrap();
                 let arg = format!("user-data-dir={}", user_data_dir);
                 caps.add_arg(arg.as_str()).unwrap();
-                let driver = fatal_unwrap_e!(WebDriver::new("http://localhost:8888", caps).await, "Failed to create driver {}");
+                let driver = fatal_unwrap_e!(WebDriver::new(format!("http://localhost:{}", port), caps).await, "Failed to create driver {}");
                 Self{
                     child,
                     port,
@@ -131,10 +140,4 @@ pub fn patch_cdc(chromedriver_path: &str) {
         mem::forget(cdc_str);
     }
     fs::write(chromedriver_path, driver_binary).unwrap();
-}
-
-impl Drop for WebDriverExt {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-    }
 }

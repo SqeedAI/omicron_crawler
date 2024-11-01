@@ -2,7 +2,8 @@
 macro_rules! fatal_assert {
     ($($arg:tt)+) => {{
         error!($($arg)+);
-        std::process::exit(1);
+        panic!($($arg)+);
+
     }};
 }
 
