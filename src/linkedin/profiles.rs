@@ -15,6 +15,7 @@ impl Display for SearchResult {
 pub struct Profile {
     pub name: String,
     pub url: String,
+    pub profile_picture_url: String,
     pub description: String,
     pub about: Option<String>,
     pub location: String,
@@ -27,8 +28,8 @@ impl Display for Profile {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "name: {}\nurl: {}\ndescription: {}\nlocation: {}\n",
-            self.name, self.url, self.description, self.location
+            "name: {}\nurl: {}\ndescription: {}\nlocation: {}\nprofile picture: {}\n",
+            self.name, self.url, self.description, self.location, self.profile_picture_url
         )?;
 
         if let Some(about) = &self.about {

@@ -278,8 +278,10 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
     let education = parse_education(driver).await;
     let skills = parse_skills(driver).await;
     let languages = parse_languages(driver).await;
+    let profile_picture_url = parse_profile_picture(driver).await;
 
     Profile {
+        profile_picture_url,
         name: name_span.text().await.unwrap().to_string(),
         url: linkedin_url,
         description: description_element.text().await.unwrap(),
@@ -510,4 +512,17 @@ pub async fn parse_language_entry(language_entry: WebElement, language_array: &m
         }
     };
     language_array.push(Language { language, fluency });
+}
+
+pub async fn parse_profile_picture(driver: &WebDriverExt) -> String {
+    match driver
+        .find_until_loaded(By::XPath("//div/img[@data-anonymize='headshot-photo']"), Duration::from_secs(5))
+        .await
+    {
+        Ok(profile_img) => profile_img.attr("src").await.unwrap().unwrap(),
+        Err(e) => {
+            info!("Failed to find picture {}", e);
+            "".to_string()
+        }
+    }
 }
