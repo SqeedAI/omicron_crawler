@@ -1,8 +1,9 @@
 use crate::driver_ext::WebDriverExt;
 use crate::linkedin::enums::Functions;
 use crate::linkedin::profiles;
-use crate::linkedin::profiles::{Education, Experience, Interval, Profile, SearchResult, Skill};
+use crate::linkedin::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
 use crate::utils::get_domain_url;
+use regex::Regex;
 use std::thread::sleep;
 use std::time::Duration;
 use thirtyfour::common::action::KeyAction::KeyDown;
@@ -276,6 +277,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
     let experience = parse_experience(driver).await;
     let education = parse_education(driver).await;
     let skills = parse_skills(driver).await;
+    let languages = parse_languages(driver).await;
 
     Profile {
         name: name_span.text().await.unwrap().to_string(),
@@ -283,11 +285,10 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
         description: description_element.text().await.unwrap(),
         about,
         location: location.text().await.unwrap(),
-        connections: String::new(),
         experience,
         education,
         skills,
-        languages: Vec::new(),
+        languages,
     }
 }
 
@@ -360,38 +361,50 @@ pub async fn parse_education_entry(education_entry: WebElement, education_array:
 }
 
 pub async fn parse_skills(driver: &WebDriverExt) -> Option<Vec<Skill>> {
-    let skills_title = if let Ok(skills_title) = driver
+    let skills_title = match driver
         .driver
         .find(By::XPath("//h2[contains(., 'Featured skills and endorsements')]"))
         .await
     {
-        skills_title
-    } else {
-        info!("No skills section found.");
-        return None;
-    };
-    let skills_section = if let Ok(skills_main_div) = skills_title.parent().await {
-        if let Ok(skills_section) = skills_main_div.parent().await {
-            skills_section
-        } else {
-            error!("No skills parent section found.");
+        Ok(skills_title) => skills_title,
+        Err(_) => {
+            info!("No skills section found.");
             return None;
         }
-    } else {
-        error!("No skills parent div found.");
-        return None;
     };
 
-    if let Ok(button) = skills_section.find(By::XPath("./button")).await {
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        button.scroll_into_view().await.unwrap();
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        if let Err(result) = button.click().await {
-            error!("Failed to click show more skills button {}", result);
+    let skills_section = match skills_title.parent().await {
+        Ok(skills_main_div) => match skills_main_div.parent().await {
+            Ok(skills_section) => skills_section,
+            Err(_) => {
+                error!("No skills parent section found.");
+                return None;
+            }
+        },
+        Err(_) => {
+            error!("No skills parent div found.");
+            return None;
         }
-        button.scroll_into_view().await.unwrap();
-    } else {
-        info!("No show more button found.");
+    };
+
+    match skills_section.find(By::XPath("./button")).await {
+        Ok(button) => {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            if let Err(result) = button.scroll_into_view().await {
+                error!("Failed to scroll to show more skills button: {}", result);
+            } else {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                if let Err(result) = button.click().await {
+                    error!("Failed to click show more skills button: {}", result);
+                }
+                if let Err(result) = button.scroll_into_view().await {
+                    error!("Failed to scroll to show more skills button after clicking: {}", result);
+                }
+            }
+        }
+        Err(_) => {
+            info!("No show more button found.");
+        }
     }
 
     let skill_list = if let Ok(skill_list) = skills_section.find_all(By::XPath("./div/ul/li")).await {
@@ -409,26 +422,34 @@ pub async fn parse_skills(driver: &WebDriverExt) -> Option<Vec<Skill>> {
 }
 
 pub async fn parse_skill_entry(entry: WebElement, skill_entry: &mut Vec<Skill>) {
-    let skill_name = if let Ok(skill_elem) = entry.find(By::XPath("./p")).await {
-        let text = skill_elem.text().await.unwrap();
-        text
-    } else {
-        error!("Failed to find skill name");
-        return;
+    let skill_name = match entry.find(By::XPath("./p")).await {
+        Ok(skill_elem) => match skill_elem.text().await {
+            Ok(text) => text,
+            Err(_) => {
+                error!("Failed to get skill name text");
+                return;
+            }
+        },
+        Err(_) => {
+            error!("Failed to find skill name element");
+            return;
+        }
     };
 
     let endorsements = if let Ok(endorsements_elem) = entry.find(By::XPath("./div/span")).await {
         let text = endorsements_elem.text().await.unwrap();
-        let cleaned_text = text.replace(" endorsements", "");
+        let re = Regex::new(r"\d+").unwrap();
+        let re_found_text = re.find(&text).unwrap();
+        let cleaned_text = re_found_text.as_str();
         let parsed_endorsements = if let Ok(parsed) = cleaned_text.parse::<u16>() {
             parsed
         } else {
-            error!("Failed to parse endorsements {}", text);
+            error!("Failed to parse endorsements to int from str: {}", text);
             0
         };
         parsed_endorsements
     } else {
-        error!("Failed to find endorsements");
+        trace!("No endorsements found.");
         0
     };
 
@@ -436,4 +457,57 @@ pub async fn parse_skill_entry(entry: WebElement, skill_entry: &mut Vec<Skill>) 
         name: skill_name,
         endorsements,
     });
+}
+
+pub async fn parse_languages(driver: &WebDriverExt) -> Option<Vec<Language>> {
+    let languages_title = match driver.driver.find(By::XPath("//h2[contains(., 'Languages')]")).await {
+        Ok(languages_title) => languages_title,
+        Err(_) => {
+            info!("No languages section found.");
+            return None;
+        }
+    };
+
+    let language_list = match languages_title.find_all(By::XPath("../ul/li")).await {
+        Ok(language_list) => language_list,
+        Err(_) => {
+            error!("No language list found.");
+            return None;
+        }
+    };
+    let mut language_array = Vec::new();
+    for language_entry in language_list {
+        parse_language_entry(language_entry, &mut language_array).await;
+    }
+    Some(language_array)
+}
+
+pub async fn parse_language_entry(language_entry: WebElement, language_array: &mut Vec<Language>) {
+    let language = match language_entry.find(By::XPath("./p[1]")).await {
+        Ok(language_name) => match language_name.text().await {
+            Ok(text) => text,
+            Err(_) => {
+                error!("Failed to get language name text");
+                return;
+            }
+        },
+        Err(_) => {
+            error!("Failed to find language name element");
+            return;
+        }
+    };
+    let fluency = match language_entry.find(By::XPath("./p[2]")).await {
+        Ok(language_fluency) => match language_fluency.text().await {
+            Ok(text) => text,
+            Err(_) => {
+                error!("Failed to get language fluency text");
+                return;
+            }
+        },
+        Err(_) => {
+            error!("Failed to find language fluency element");
+            return;
+        }
+    };
+    language_array.push(Language { language, fluency });
 }

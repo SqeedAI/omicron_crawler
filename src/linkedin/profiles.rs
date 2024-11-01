@@ -18,18 +18,17 @@ pub struct Profile {
     pub description: String,
     pub about: Option<String>,
     pub location: String,
-    pub connections: String,
     pub experience: Option<Vec<Experience>>,
     pub education: Option<Vec<Education>>,
     pub skills: Option<Vec<Skill>>,
-    pub languages: Vec<Language>,
+    pub languages: Option<Vec<Language>>,
 }
 impl Display for Profile {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "name: {}\nurl: {}\ndescription: {}\nlocation: {}\nconnections: {}\n",
-            self.name, self.url, self.description, self.location, self.connections
+            "name: {}\nurl: {}\ndescription: {}\nlocation: {}\n",
+            self.name, self.url, self.description, self.location
         )?;
 
         if let Some(about) = &self.about {
@@ -52,6 +51,13 @@ impl Display for Profile {
             write!(f, "Skills:\n")?;
             for skill in skills.iter() {
                 write!(f, "{}\n", *skill)?;
+            }
+        }
+
+        if let Some(languages) = &self.languages {
+            write!(f, "Languages:\n")?;
+            for language in languages.iter() {
+                write!(f, "{}\n", *language)?;
             }
         }
         Ok(())
