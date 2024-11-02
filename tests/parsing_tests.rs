@@ -122,3 +122,62 @@ async fn test_parse_2() {
         }
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_parse_3() {
+    Logger::init(log::LevelFilter::Trace);
+    let selenium = Crawler::new("8888".to_string()).await;
+    let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
+    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    assert_eq!(results.name, "Peter Hamran");
+    assert_eq!(results.url, "https://www.linkedin.com/in/peter-hamran-151a6317a");
+    assert_eq!(
+        results.profile_picture_url,
+        "https://media.licdn.com/dms/image/v2/D4D03AQFSHH3te-aM5g/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1669666700396?e=1735776000&v=beta&t=2_MPCstO-7XL4JGMmAQz_kvLVsqqhpHp6_ItIruRKAY"
+    );
+    assert_eq!(results.description, "Cofounder of Sqeed s.r.o.");
+    assert_eq!(results.location, "Slovakia");
+    assert_eq!(results.about.is_some(), false);
+    match results.experience {
+        Some(experience) => {
+            for experience in experience.iter() {
+                println!("{}", *experience);
+            }
+            assert_eq!(experience.len(), 1);
+        }
+        None => {
+            assert!(false, "No experience found");
+        }
+    }
+    match results.education {
+        Some(education) => {
+            assert_eq!(education.len(), 2);
+            assert_eq!(education[0].title, "Brno University of Technology");
+            assert_eq!(education[0].field, "Inteligent Systems");
+            assert_eq!(education[0].degree, "Masters");
+
+            assert_eq!(education[1].title, "Brno University of Technology");
+            assert_eq!(education[1].field, "Information Technology");
+            assert_eq!(education[1].degree, "Bachelor's degree");
+        }
+        None => {
+            assert!(false, "No education found");
+        }
+    }
+
+    match results.skills {
+        Some(skills) => {
+            assert_eq!(skills.len(), 3);
+        }
+        None => {
+            assert!(false, "No skills found");
+        }
+    }
+
+    match results.languages {
+        Some(_) => {
+            assert!(false, "Languages should be empty");
+        }
+        None => {}
+    }
+}

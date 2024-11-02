@@ -235,7 +235,6 @@ pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {
     }
     let about_title = possible_about_title.unwrap();
     about_title.scroll_into_view().await.unwrap();
-    tokio::time::sleep(Duration::from_millis(100)).await;
 
     //In case we have show more, then the text element is also p instead of span. This is the first branch
     let about_section = about_title.parent().await.unwrap();
@@ -282,7 +281,6 @@ pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> 
         .await
     {
         Ok(experience_section) => {
-            tokio::time::sleep(Duration::from_millis(100)).await;
             experience_section.scroll_into_view().await.unwrap();
             experience_section
         }
@@ -294,7 +292,6 @@ pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> 
 
     match experience_section.find(By::XPath("./button")).await {
         Ok(show_more_button) => {
-            tokio::time::sleep(Duration::from_millis(100)).await;
             show_more_button.scroll_into_view().await.unwrap();
             show_more_button.click().await.unwrap();
         }
@@ -575,7 +572,6 @@ pub async fn parse_skills(driver: &WebDriverExt) -> Option<Vec<Skill>> {
 
     match skills_section.find(By::XPath("./button")).await {
         Ok(button) => {
-            tokio::time::sleep(Duration::from_millis(100)).await;
             if let Err(result) = button.scroll_into_view().await {
                 error!("Failed to scroll to show more skills button: {}", result);
             } else {
