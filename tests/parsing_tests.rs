@@ -68,4 +68,56 @@ async fn test_parse_2() {
     assert_eq!(results.name, "Patrik Bujňák");
     assert_eq!(results.url, "https://www.linkedin.com/in/patrik-buj%C5%88%C3%A1k-dev");
     assert_eq!(results.profile_picture_url, "https://media.licdn.com/dms/image/v2/C5603AQHICPthc6Rpbw/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1562843874807?e=1735776000&v=beta&t=eOeTW1RZxx-8RuJiSo8t0_dBK3u0tbxg-ZRSnm5b3q4");
+    assert_eq!(results.description, "Full-stack Developer at Vissim");
+    assert_eq!(results.location, "Slovakia");
+    assert_eq!(results.about.is_some(), false);
+    match results.experience {
+        Some(experience) => {
+            for experience in experience.iter() {
+                println!("{}", *experience);
+            }
+            assert_eq!(experience.len(), 6);
+        }
+        None => {
+            assert!(false, "No experience found");
+        }
+    }
+    match results.education {
+        Some(education) => {
+            assert_eq!(education.len(), 2);
+            assert_eq!(education[0].title, "Technical University of Košice");
+            assert_eq!(education[0].field, "Business Informatics");
+            assert_eq!(education[0].degree, "Master's degree");
+
+            assert_eq!(education[1].title, "Technical University of Košice");
+            assert_eq!(education[1].field, "Business Informatics");
+            assert_eq!(education[1].degree, "Bachelor's degree");
+        }
+        None => {
+            assert!(false, "No education found");
+        }
+    }
+    match results.skills {
+        Some(skills) => {
+            assert_eq!(skills.len(), 18);
+        }
+        None => {
+            assert!(false, "No skills found");
+        }
+    }
+
+    match results.languages {
+        Some(languages) => {
+            assert_eq!(languages.len(), 3);
+            assert_eq!(languages[0].language, "English");
+            assert_eq!(languages[0].fluency, "Professional working proficiency");
+            assert_eq!(languages[1].language, "Spanish");
+            assert_eq!(languages[1].fluency, "Elementary proficiency");
+            assert_eq!(languages[2].language, "Slovak");
+            assert_eq!(languages[2].fluency, "Native or bilingual proficiency");
+        }
+        None => {
+            assert!(false, "No languages found");
+        }
+    }
 }

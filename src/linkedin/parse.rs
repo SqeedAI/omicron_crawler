@@ -143,7 +143,7 @@ pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
     results
 }
 
-pub async fn parse_profile_about(driver: &WebDriverExt) -> Option<String> {
+pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {
     let possible_about_title = driver.driver.find(By::XPath("//h1[normalize-space()='About']")).await;
     if let Err((err)) = possible_about_title {
         info!("No about section found.");
@@ -164,7 +164,7 @@ pub async fn parse_profile_about(driver: &WebDriverExt) -> Option<String> {
         let about_p = fatal_unwrap_e!(parent.find(By::XPath("./p")).await, "Failed to find about p {}");
         return Some(about_p.text().await.unwrap().replace("Show less", ""));
     }
-    trace!("No show more button found.");
+    trace!("No show more button for about found.");
 
     //In case we don't have show more, then the text element is span
     let about_span = fatal_unwrap_e!(parent.find(By::XPath(".//div/span")).await, "Failed to find about span {}");
@@ -194,7 +194,7 @@ pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> 
             show_more_button.click().await.unwrap();
         }
         Err(_) => {
-            info!("No show more button found.");
+            info!("No show more button for experience found.");
         }
     };
 
@@ -295,7 +295,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
         "Failed to find location span after scrolling {}"
     );
 
-    let about = parse_profile_about(driver).await;
+    let about = parse_about(driver).await;
     let experience = parse_experience(driver).await;
     let education = parse_education(driver).await;
     let skills = parse_skills(driver).await;
@@ -427,7 +427,7 @@ pub async fn parse_skills(driver: &WebDriverExt) -> Option<Vec<Skill>> {
             }
         }
         Err(_) => {
-            info!("No show more button found.");
+            info!("No show more button for skills found.");
         }
     }
 
