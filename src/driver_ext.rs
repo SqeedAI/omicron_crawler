@@ -9,6 +9,7 @@ use std::time::Duration;
 use std::{fs, future, mem};
 use thirtyfour::error::{WebDriverError, WebDriverResult};
 use thirtyfour::{BrowserCapabilitiesHelper, By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver, WebElement};
+use tokio::runtime::Runtime;
 use tokio::sync::{futures, oneshot};
 use undetected_chromedriver::chrome;
 
@@ -19,7 +20,7 @@ pub struct WebDriverExt {
 }
 
 impl WebDriverExt {
-    pub async fn cleanup(&self) {
+    async fn cleanup(&self) {
         let driver = unsafe { std::ptr::read(&self.driver) };
         let mut child = unsafe { std::ptr::read(&self.child) };
         if let Err(e) = driver.quit().await {
@@ -76,7 +77,7 @@ impl WebDriverExt {
                 Self{
                     child,
                     port,
-                    driver
+                    driver,
                 }
             },
         }
@@ -94,6 +95,12 @@ impl WebDriverExt {
         }
 
         Err(WebDriverError::Timeout("element not found. Timed out!".to_string()))
+    }
+}
+
+impl Drop for WebDriverExt {
+    fn drop(&mut self) {
+        tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(async { self.cleanup().await }));
     }
 }
 

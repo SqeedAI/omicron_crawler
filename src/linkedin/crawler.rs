@@ -11,9 +11,6 @@ pub struct Crawler {
 }
 
 impl Crawler {
-    pub async fn cleanup(&self) {
-        self.driver_ext.cleanup().await;
-    }
     pub async fn new(port: String) -> Self {
         let driver_ext = WebDriverExt::new(port, "./drivers/chromedriver.exe").await;
         Self { driver_ext }

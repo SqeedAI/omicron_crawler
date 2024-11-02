@@ -171,19 +171,41 @@ pub async fn parse_profile_about(driver: &WebDriverExt) -> Option<String> {
     Some(about_span.text().await.unwrap())
 }
 pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> {
-    let possible_experience_title = driver.driver.find(By::XPath("//h2[contains(., 'experience')]")).await;
+    let experience_section = match driver
+        .driver
+        .find(By::XPath("//section[@data-sn-view-name='feature-lead-experience']"))
+        .await
+    {
+        Ok(experience_section) => {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            experience_section.scroll_into_view().await.unwrap();
+            experience_section
+        }
+        Err(_) => {
+            info!("No experience section found.");
+            return None;
+        }
+    };
+
+    match experience_section.find(By::XPath("./button")).await {
+        Ok(show_more_button) => {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            show_more_button.scroll_into_view().await.unwrap();
+            show_more_button.click().await.unwrap();
+        }
+        Err(_) => {
+            info!("No show more button found.");
+        }
+    };
+
+    let experience_list = match experience_section.find_all(By::XPath("./div/ul/li")).await {
+        Ok(experience_list) => experience_list,
+        Err(_) => {
+            info!("No experience list found.");
+            return None;
+        }
+    };
     let mut results = Vec::new();
-    if let Err((err)) = possible_experience_title {
-        info!("No experience section found.");
-        return None;
-    }
-    let experience = possible_experience_title.unwrap();
-    let experience_parent = fatal_unwrap_e!(experience.parent().await, "Failed to find experience parent {}");
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    experience_parent.scroll_into_view().await.unwrap();
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    let experience_ul = fatal_unwrap_e!(experience_parent.find(By::XPath("./ul")).await, "Failed to find experience ul {}");
-    let experience_list = fatal_unwrap_e!(experience_ul.find_all(By::XPath("./li")).await, "Failed to find experience list {}");
     for experience_entry in experience_list {
         parse_experience_entry(experience_entry, &mut results).await;
     }

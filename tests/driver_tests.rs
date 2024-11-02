@@ -1,6 +1,6 @@
 use omicron_crawler::driver_ext::WebDriverExt;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_connection() {
     let driver = WebDriverExt::new("9115".to_string(), "./drivers/chromedriver.exe").await;
     let profile_url =
@@ -12,5 +12,4 @@ async fn test_connection() {
             assert!(false, "Failed to go to test1 {}", e);
         }
     }
-    driver.cleanup().await;
 }

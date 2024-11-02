@@ -9,7 +9,7 @@ use omicron_crawler::logger::Logger;
 // 1. Create a generic error handler macro that will generically handle cases like not found / stale element / etc
 //    - In case of stale, we should refetch the element and retry until timeout
 //    - In case of not found, we retry with a timeout
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(log::LevelFilter::Trace);
     let selenium = Crawler::new("8888".to_string()).await;
@@ -27,5 +27,4 @@ async fn main() {
     let first = results.first().unwrap();
     let profile = selenium.parse_profile(&first.sales_url).await;
     println!("{}", profile);
-    selenium.cleanup().await;
 }
