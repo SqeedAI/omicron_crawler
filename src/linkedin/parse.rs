@@ -237,8 +237,6 @@ pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {
     about_title.scroll_into_view().await.unwrap();
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    //Check if show more is needed to click
-
     //In case we have show more, then the text element is also p instead of span. This is the first branch
     let about_section = about_title.parent().await.unwrap();
     if let Some(about_p) = parse_about_show_more(&about_section).await {
@@ -388,44 +386,59 @@ pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut V
     result.push(Experience { position: title, interval });
 }
 
-pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str) -> Profile {
+pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str) -> CrawlerResult<Profile> {
     driver.driver.goto(sales_profile_url).await.unwrap();
-    let name_span: WebElement = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(By::XPath(".//h1[@data-anonymize='person-name']"), Duration::from_secs(5))
-            .await,
-        "Failed to find name span after scrolling {}"
-    );
-    let profile_options = fatal_unwrap_e!(
-        driver.driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await,
-        "Failed to find profile options {}"
-    );
+    let name_span = match driver
+        .find_until_loaded(By::XPath(".//h1[@data-anonymize='person-name']"), Duration::from_secs(5))
+        .await
+    {
+        Ok(name_span) => name_span,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find name span").unwrap())),
+    };
 
-    fatal_unwrap_e!(profile_options.click().await, "Failed to click profile options {}");
+    let profile_options = match driver.driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await {
+        Ok(profile_options) => profile_options,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find profile options").unwrap())),
+    };
 
-    let linkedin_url_element = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(By::XPath("/html/body/div[1]/div[2]/ul/li[2]/a"), Duration::from_secs(5))
-            .await,
-        "Failed to find linkedin url element {}"
-    );
-    let linkedin_url = linkedin_url_element.attr("href").await.unwrap().unwrap();
+    if let Err(_) = profile_options.click().await {
+        return Err(ParseError(String::from_str("Failed to click profile options").unwrap()));
+    };
+
+    let linkedin_url = match driver
+        .find_until_loaded(By::XPath("/html/body/div[1]/div[2]/ul/li[2]/a"), Duration::from_secs(5))
+        .await
+    {
+        Ok(linkedin_url_element) => match linkedin_url_element.attr("href").await {
+            Ok(linkedin_url) => match linkedin_url {
+                Some(linkedin_url) => linkedin_url,
+                None => {
+                    return Err(ParseError(String::from_str("Failed to obtain linkedin href content").unwrap()));
+                }
+            },
+            Err(_) => return Err(ParseError(String::from_str("Failed to get linkedin url href").unwrap())),
+        },
+        Err(_) => return Err(ParseError(String::from_str("Failed to find linkedin url element").unwrap())),
+    };
+
     // To close the menu
     driver.driver.action_chain().send_keys(Key::Escape).perform().await.unwrap();
-    let description_element = fatal_unwrap_e!(
-        driver.driver.find(By::XPath(".//span[@data-anonymize='headline']")).await,
-        "Failed to find name span after scrolling {}"
-    );
 
-    let location = fatal_unwrap_e!(
-        driver
-            .driver
-            .find(By::XPath(
-                "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[1]/div[4]/div[1]"
-            ))
-            .await,
-        "Failed to find location span after scrolling {}"
-    );
+    let description_element = match driver.driver.find(By::XPath(".//span[@data-anonymize='headline']")).await {
+        Ok(description_element) => description_element,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find name span").unwrap())),
+    };
+
+    let location = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[1]/div[4]/div[1]",
+        ))
+        .await
+    {
+        Ok(location) => location,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find location span").unwrap())),
+    };
 
     let about = parse_about(driver).await;
     let experience = parse_experience(driver).await;
@@ -434,7 +447,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
     let languages = parse_languages(driver).await;
     let profile_picture_url = parse_profile_picture(driver).await;
 
-    Profile {
+    Ok(Profile {
         profile_picture_url,
         name: name_span.text().await.unwrap().to_string(),
         url: linkedin_url,
@@ -445,7 +458,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
         education,
         skills,
         languages,
-    }
+    })
 }
 
 pub async fn parse_education(driver: &WebDriverExt) -> Option<Vec<Education>> {

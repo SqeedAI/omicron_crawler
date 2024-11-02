@@ -31,5 +31,5 @@ async fn main() {
     let results = fatal_unwrap_e!(selenium.parse_search().await, "{}");
     let first = results.first().unwrap();
     let profile = selenium.parse_profile(&first.sales_url).await;
-    println!("{}", profile);
+    println!("{}", fatal_unwrap_e!(profile, "{}"));
 }

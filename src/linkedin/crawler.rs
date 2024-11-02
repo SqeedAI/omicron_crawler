@@ -47,7 +47,7 @@ impl Crawler {
         parse_search(driver_ext).await
     }
 
-    pub async fn parse_profile(&self, sales_url: &str) -> Profile {
+    pub async fn parse_profile(&self, sales_url: &str) -> CrawlerResult<Profile> {
         let driver_ext = &self.driver_ext;
         let original_tab = driver_ext.driver.window().await.unwrap();
         let new_window_handle = driver_ext.driver.new_tab().await.unwrap();

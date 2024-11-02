@@ -7,7 +7,7 @@ async fn test_parse_1() {
     let selenium = Crawler::new("8888".to_string()).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
-    let results = selenium.parse_profile(profile_url).await;
+    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Matus Chochlik");
     assert_eq!(results.url, "https://www.linkedin.com/in/matus-chochlik-154a7827");
     assert_eq!(results.profile_picture_url, "https://media.licdn.com/dms/image/v2/C4D03AQGhNg5cATVIJQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517475003399?e=1735776000&v=beta&t=NO-k0V1cI_w4Rbwh3DHf31qpMIqAhE10YHtR_I5B0ow");
@@ -65,7 +65,7 @@ async fn test_parse_2() {
     let selenium = Crawler::new("8888".to_string()).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAy0mZcBlmERvP-yDTL3gnlTLSELF6c7hrk,NAME_SEARCH,UDAQ?_ntb=aRijRPOnTBeuYBCnRY718Q%3D%3D";
-    let results = selenium.parse_profile(profile_url).await;
+    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Patrik Bujňák");
     assert_eq!(results.url, "https://www.linkedin.com/in/patrik-buj%C5%88%C3%A1k-dev");
     assert_eq!(results.profile_picture_url, "https://media.licdn.com/dms/image/v2/C5603AQHICPthc6Rpbw/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1562843874807?e=1735776000&v=beta&t=eOeTW1RZxx-8RuJiSo8t0_dBK3u0tbxg-ZRSnm5b3q4");
