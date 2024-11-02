@@ -462,20 +462,22 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
 }
 
 pub async fn parse_education(driver: &WebDriverExt) -> Option<Vec<Education>> {
-    let possible_education_title = driver
+    let education_list = match driver
         .driver
-        .find(By::XPath(
-            "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/div/section[2]/div/h2",
+        .find_all(By::XPath(
+            "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/div/section[2]/div/ul/li",
         ))
-        .await;
-    if let Err((err)) = possible_education_title {
-        info!("No education section found.");
-        return None;
-    }
-    let education_title = possible_education_title.unwrap();
-    let parent = fatal_unwrap_e!(education_title.parent().await, "Failed to find education parent {}");
-    let education_ul = fatal_unwrap_e!(parent.find(By::XPath("./ul")).await, "Failed to find education ul {}");
-    let education_list = fatal_unwrap_e!(education_ul.find_all(By::XPath("./li")).await, "Failed to find education list {}");
+        .await
+    {
+        Ok(education_list) => education_list,
+        Err(_) => {
+            return {
+                info!("No education section found.");
+                None
+            }
+        }
+    };
+
     let mut result = Vec::with_capacity(education_list.len());
     for education_entry in education_list {
         parse_education_entry(education_entry, &mut result).await;
@@ -484,42 +486,57 @@ pub async fn parse_education(driver: &WebDriverExt) -> Option<Vec<Education>> {
 }
 
 pub async fn parse_education_entry(education_entry: WebElement, education_array: &mut Vec<Education>) {
-    let education_main_div = fatal_unwrap_e!(
-        education_entry.find(By::XPath("./div")).await,
-        "Failed to find education main div {}"
-    );
-    let education_title = fatal_unwrap_e!(
-        education_main_div.find(By::XPath("./h3")).await,
-        "Failed to find education title {}"
-    );
-    let title = education_title.text().await.unwrap();
+    let education_main_div = match education_entry.find(By::XPath("./div")).await {
+        Ok(education_main_div) => education_main_div,
+        Err(_) => {
+            warn!("Failed to find education main div");
+            return;
+        }
+    };
+
+    let title = match education_main_div.find(By::XPath("./h3")).await {
+        Ok(education_title) => match education_title.text().await {
+            Ok(education_title) => education_title,
+            Err(_) => {
+                warn!("Failed to get education title text");
+                return;
+            }
+        },
+        Err(_) => {
+            warn!("Failed to find education title");
+            return;
+        }
+    };
 
     let result_degree = education_main_div.find(By::XPath("./p[1]/span[1]")).await;
     let result_field = education_main_div.find(By::XPath("./p[1]/span[2]")).await;
     let result_timeline = education_main_div.find(By::XPath("./p[2]/span[2]")).await;
 
-    let interval = if let Ok(timeline) = result_timeline {
-        Interval::from_str(timeline.text().await.unwrap().as_str(), "–").unwrap()
-    } else {
-        info!("No education timeline found.");
-        Interval {
-            start: "".to_string(),
-            end: "".to_string(),
+    let interval = match result_timeline {
+        Ok(timeline) => Interval::from_str(timeline.text().await.unwrap().as_str(), "–").unwrap(),
+        Err(_) => {
+            info!("No education timeline found.");
+            Interval {
+                start: "".to_string(),
+                end: "".to_string(),
+            }
         }
     };
 
-    let degree = if let Ok(degree) = result_degree {
-        degree.text().await.unwrap()
-    } else {
-        info!("No degree found.");
-        "".to_string()
+    let degree = match result_degree {
+        Ok(degree) => degree.text().await.unwrap(),
+        Err(_) => {
+            info!("No degree found.");
+            "".to_string()
+        }
     };
 
-    let field = if let Ok(field) = result_field {
-        field.text().await.unwrap()
-    } else {
-        info!("No field found.");
-        "".to_string()
+    let field = match result_field {
+        Ok(field) => field.text().await.unwrap(),
+        Err(_) => {
+            info!("No field found.");
+            "".to_string()
+        }
     };
     education_array.push(Education {
         title,
