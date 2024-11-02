@@ -1,4 +1,6 @@
 use crate::driver_ext::WebDriverExt;
+use crate::errors::CrawlerError::DriverError;
+use crate::errors::CrawlerResult;
 use crate::linkedin::enums::{Functions, SeniorityLevel};
 use crate::linkedin::parse::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::profiles::{Profile, SearchResult};
@@ -22,30 +24,25 @@ impl Crawler {
             "Failed to go to linkedin {}"
         );
     }
-    pub async fn perform_search(
-        &self,
-        function: Functions,
-        job_title: String,
-        geography: Option<String>,
-        seniority_level: Option<SeniorityLevel>,
-    ) {
+    pub async fn perform_search(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
         let driver_ext = &self.driver_ext;
-        fatal_unwrap_e!(
-            driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await,
-            "Failed to go to linkedin {}"
-        );
-        set_function_search(driver_ext, function).await;
-        set_job_title_search(driver_ext, job_title).await;
-        if let Some(geography) = geography {
-            set_geography_search(driver_ext, geography).await;
+        match driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await {
+            Ok(_) => {}
+            Err(e) => return Err(DriverError(format!("Failed to go to linkedin {}", e))),
         }
+        set_function_search(driver_ext, function).await?;
+        set_job_title_search(driver_ext, job_title).await?;
+        if let Some(geography) = geography {
+            set_geography_search(driver_ext, geography).await?
+        };
+        Ok(())
     }
     pub async fn test_detection(&self) {
         let driver_ext = &self.driver_ext;
         driver_ext.driver.goto("https://demo.fingerprint.com/playground").await.unwrap();
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
-    pub async fn parse_search(&self) -> Vec<SearchResult> {
+    pub async fn parse_search(&self) -> CrawlerResult<Vec<SearchResult>> {
         let driver_ext = &self.driver_ext;
         parse_search(driver_ext).await
     }

@@ -1,146 +1,230 @@
 use crate::driver_ext::WebDriverExt;
+use crate::errors::CrawlerError::{InteractionError, ParseError};
+use crate::errors::{CrawlerError, CrawlerResult};
 use crate::linkedin::enums::Functions;
 use crate::linkedin::profiles;
 use crate::linkedin::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
 use crate::utils::get_domain_url;
 use regex::Regex;
+use std::fmt::format;
+use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use thirtyfour::common::action::KeyAction::KeyDown;
+use thirtyfour::error::WebDriverResult;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
 use thirtyfour::{By, Key, WebDriver, WebElement};
 
-pub async fn set_function_search(driver: &WebDriverExt, function: Functions) {
-    let function_button = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(
-                By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div/button"),
-                Duration::from_secs(5)
-            )
-            .await,
-        "Failed to find function button {}"
-    );
-    fatal_unwrap_e!(function_button.click().await, "Failed to click function button {}");
-    let input_field = fatal_unwrap_e!(
-        driver
-            .driver
-            .find(By::XPath(
-                "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div[3]/div[1]/div[1]/div/input"
-            ))
-            .await,
-        "Failed to find input field {}"
-    );
+pub async fn set_function_search(driver: &WebDriverExt, function: Functions) -> CrawlerResult<()> {
+    let function_button = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div/button"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(function_button) => function_button,
+        Err(_) => return Err(InteractionError(String::from_str("Failed to find function filter button").unwrap())),
+    };
 
-    input_field.send_keys(function.as_str()).await.unwrap();
+    if let Err(_) = function_button.click().await {
+        return Err(InteractionError(
+            String::from_str("Failed to click function filter button").unwrap(),
+        ));
+    }
+
+    let input_field = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div[3]/div[1]/div[1]/div/input",
+        ))
+        .await
+    {
+        Ok(input_field) => input_field,
+        Err(_) => {
+            return Err(InteractionError(
+                String::from_str("Failed to find input field for function filter").unwrap(),
+            ));
+        }
+    };
+
+    input_field.send_keys(function.to_string()).await.unwrap();
     tokio::time::sleep(Duration::from_millis(700)).await;
     input_field.send_keys(Key::Down).await.unwrap();
     tokio::time::sleep(Duration::from_millis(700)).await;
     input_field.send_keys(Key::Enter).await.unwrap();
+    Ok(())
 }
 
-pub async fn set_job_title_search(driver: &WebDriverExt, job_title: String) {
-    let job_title_button = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(
-                By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[2]/div/button"),
-                Duration::from_secs(5)
-            )
-            .await,
-        "Failed to find job title button {}"
-    );
-    fatal_unwrap_e!(job_title_button.click().await, "Failed to click job title button {}");
-    let input_field = fatal_unwrap_e!(
-        driver
-            .driver
-            .find(By::XPath(
-                "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[2]/div[3]/div[1]/div[1]/div/input"
+pub async fn set_job_title_search(driver: &WebDriverExt, job_title: String) -> CrawlerResult<()> {
+    let job_title_button = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[2]/div/button"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(job_title_button) => job_title_button,
+        Err(_) => {
+            return Err(InteractionError(
+                String::from_str("Failed to find job title filter button").unwrap(),
             ))
-            .await,
-        "Failed to find input field {}"
-    );
+        }
+    };
+    if let Err(_) = job_title_button.click().await {
+        return Err(InteractionError(
+            String::from_str("Failed to click job title filter button").unwrap(),
+        ));
+    }
 
+    let input_field = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[2]/div[3]/div[1]/div[1]/div/input",
+        ))
+        .await
+    {
+        Ok(input_field) => input_field,
+        Err(_) => {
+            return Err(InteractionError(
+                String::from_str("Failed to find input field for job title filter").unwrap(),
+            ));
+        }
+    };
     input_field.send_keys(job_title).await.unwrap();
     tokio::time::sleep(Duration::from_millis(700)).await;
     input_field.send_keys(Key::Down).await.unwrap();
     tokio::time::sleep(Duration::from_millis(700)).await;
     input_field.send_keys(Key::Enter).await.unwrap();
+    Ok(())
 }
 
-pub async fn set_geography_search(driver: &WebDriverExt, geography: String) {
-    let geography_button = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(
-                By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[3]/div/fieldset[1]/div/button"),
-                Duration::from_secs(5)
-            )
-            .await,
-        "Failed to find geography button {}"
-    );
-    fatal_unwrap_e!(geography_button.click().await, "Failed to click job title button {}");
-    let input_field = fatal_unwrap_e!(
-        driver
-            .driver
-            .find(By::XPath(
-                "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[3]/div/fieldset[1]/div[3]/div[1]/div[1]/div/input"
+pub async fn set_geography_search(driver: &WebDriverExt, geography: String) -> CrawlerResult<()> {
+    let geography_button = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[3]/div/fieldset[1]/div/button"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(geography_button) => geography_button,
+        Err(_) => {
+            return Err(InteractionError(
+                String::from_str("Failed to find geography filter button").unwrap(),
             ))
-            .await,
-        "Failed to find input field {}"
-    );
+        }
+    };
+    if let Err(_) = geography_button.click().await {
+        return Err(InteractionError(
+            String::from_str("Failed to click geography filter button").unwrap(),
+        ));
+    }
+
+    let input_field = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[3]/div/fieldset[1]/div[3]/div[1]/div[1]/div/input",
+        ))
+        .await
+    {
+        Ok(input_field) => input_field,
+        Err(_) => {
+            return Err(InteractionError(
+                String::from_str("Failed to find input field for geography filter").unwrap(),
+            ));
+        }
+    };
 
     input_field.send_keys(geography).await.unwrap();
     tokio::time::sleep(Duration::from_millis(500)).await;
     input_field.send_keys(Key::Down).await.unwrap();
     tokio::time::sleep(Duration::from_millis(500)).await;
     input_field.send_keys(Key::Enter).await.unwrap();
+    Ok(())
 }
 
-pub async fn parse_search(driver: &WebDriverExt) -> Vec<SearchResult> {
+pub async fn parse_search(driver: &WebDriverExt) -> CrawlerResult<Vec<SearchResult>> {
     let domain_url = get_domain_url(driver.driver.current_url().await.unwrap().as_str());
-    let search_list: WebElement = fatal_unwrap_e!(
-        driver
-            .find_until_loaded(By::Id("search-results-container"), Duration::from_secs(5))
-            .await,
-        "Failed to find search list {}"
-    );
-    let ol_element: WebElement = fatal_unwrap_e!(search_list.find(By::Tag("ol")).await, "Failed to find ol tag {}");
-    // Find all li elements within the ol
-    let li_elements: Vec<WebElement> = fatal_unwrap_e!(
-        ol_element.find_all(By::XPath("./li")).await,
-        "Failed to find direct child li elements {}"
-    );
+    let search_list = match driver
+        .find_until_loaded(By::Id("search-results-container"), Duration::from_secs(5))
+        .await
+    {
+        Ok(search_list) => search_list,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find search list").unwrap())),
+    };
+
+    let ol_element = match search_list.find(By::Tag("ol")).await {
+        Ok(ol_element) => ol_element,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find ol tag").unwrap())),
+    };
+
+    let li_elements = match ol_element.find_all(By::XPath("./li")).await {
+        Ok(li_elements) => li_elements,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find direct child li elements").unwrap())),
+    };
+
     trace!("Found {} profiles", li_elements.len());
     let mut results = Vec::with_capacity(li_elements.len());
     for li_element in li_elements {
-        let name_span_result = li_element.find(By::XPath(".//span[@data-anonymize='person-name']")).await;
-        let name_span: WebElement;
-
-        if let Ok(span) = name_span_result {
-            name_span = span;
-        } else {
-            trace!("Failed to find name span... scrolling");
-            fatal_unwrap_e!(li_element.scroll_into_view().await, "Failed to scroll into view {}");
-            tokio::time::sleep(Duration::from_millis(250)).await;
-            name_span = fatal_unwrap_e!(
-                li_element.find(By::XPath(".//span[@data-anonymize='person-name']")).await,
-                "Failed to find name span after scrolling {}"
-            );
-        }
-        let title_span = fatal_unwrap_e!(
-            li_element.find(By::XPath(".//span[@data-anonymize='title']")).await,
-            "Failed to find title span {}"
-        );
-
-        let a_element = fatal_unwrap_e!(name_span.parent().await, "Failed to find parent element {}");
-        let a_href = fatal_unwrap_e!(a_element.attr("href").await, "Failed to get href attribute {}").unwrap();
-        let url = format!("{}{}", domain_url, a_href);
-
-        results.push(SearchResult {
-            name: name_span.text().await.unwrap(),
-            title: title_span.text().await.unwrap(),
-            sales_url: url,
-        });
+        parse_search_entry(li_element, &mut results, &domain_url).await?;
     }
-    results
+    Ok(results)
+}
+
+pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<SearchResult>, domain_url: &str) -> CrawlerResult<()> {
+    let name_span = match search_entry.find(By::XPath(".//span[@data-anonymize='person-name']")).await {
+        Ok(name_span) => name_span,
+        Err(_) => {
+            trace!("Failed to find name span... scrolling");
+            match search_entry.scroll_into_view().await {
+                Ok(_) => {}
+                Err(_) => return Err(ParseError(String::from_str("Failed to scroll into view").unwrap())),
+            }
+            tokio::time::sleep(Duration::from_millis(250)).await;
+            match search_entry.find(By::XPath(".//span[@data-anonymize='person-name']")).await {
+                Ok(name_span) => name_span,
+                Err(_) => return Err(ParseError(String::from_str("Failed to find name span after scrolling").unwrap())),
+            }
+        }
+    };
+
+    let title_span = match search_entry.find(By::XPath(".//span[@data-anonymize='title']")).await {
+        Ok(title_span) => title_span,
+        Err(_) => {
+            error!("Failed to find title span");
+            return Err(ParseError(String::from_str("Failed to find title span").unwrap()));
+        }
+    };
+
+    let a_element = match name_span.parent().await {
+        Ok(a_element) => a_element,
+        Err(_) => {
+            error!("Failed to find parent element");
+            return Err(ParseError(String::from_str("Failed to find parent element").unwrap()));
+        }
+    };
+
+    let a_href = match a_element.attr("href").await {
+        Ok(a_href) => match a_href {
+            Some(a_href) => a_href,
+            None => {
+                error!("Failed to get href attribute");
+                return Err(ParseError(String::from_str("Failed to get href attribute").unwrap()));
+            }
+        },
+        Err(_) => {
+            error!("Failed to get href attribute");
+            return Err(ParseError(String::from_str("Failed to get href attribute").unwrap()));
+        }
+    };
+    let url = format!("{}{}", domain_url, a_href);
+
+    results.push(SearchResult {
+        name: name_span.text().await.unwrap(),
+        title: title_span.text().await.unwrap(),
+        sales_url: url,
+    });
+    Ok(())
 }
 
 pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {

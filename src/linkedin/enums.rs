@@ -1,3 +1,6 @@
+use std::fmt;
+use std::fmt::Display;
+
 pub enum Functions {
     Accounting,
     Administrative,
@@ -26,9 +29,9 @@ pub enum Functions {
     CustomerSuccessAndSupport,
 }
 
-impl Functions {
-    pub fn as_str(&self) -> &str {
-        match self {
+impl Display for Functions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
             Functions::Accounting => "Accounting",
             Functions::Administrative => "Administrative",
             Functions::ArtsAndDesign => "Arts and Design",
@@ -54,7 +57,8 @@ impl Functions {
             Functions::Research => "Research",
             Functions::Sales => "Sales",
             Functions::CustomerSuccessAndSupport => "Customer Success and Support",
-        }
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -71,9 +75,9 @@ pub enum SeniorityLevel {
     InTraining,
 }
 
-impl SeniorityLevel {
-    pub fn as_str(&self) -> &'static str {
-        match self {
+impl Display for SeniorityLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
             SeniorityLevel::Owner => "Owner",
             SeniorityLevel::CXO => "CXO",
             SeniorityLevel::VicePresident => "Vice President",
@@ -84,6 +88,7 @@ impl SeniorityLevel {
             SeniorityLevel::Senior => "Senior",
             SeniorityLevel::EntryLevel => "Entry Level",
             SeniorityLevel::InTraining => "In Training",
-        }
+        };
+        write!(f, "{}", s)
     }
 }
