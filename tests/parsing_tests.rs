@@ -181,3 +181,55 @@ async fn test_parse_3() {
         None => {}
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_parse_4() {
+    Logger::init(log::LevelFilter::Trace);
+    let selenium = Crawler::new("8888".to_string()).await;
+    let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";
+    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    assert_eq!(results.name, "Kamil Pšenák");
+    assert_eq!(results.url, "https://www.linkedin.com/in/kamil-psenak");
+    assert_eq!(
+        results.profile_picture_url,
+        "https://media.licdn.com/dms/image/v2/D4D03AQG83-WpWJmICA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1706291705207?e=1735776000&v=beta&t=S8XLpRHRQBX6rpHvdpN73wZmpOMuWU-2vXuoerGpDqc");
+    assert_eq!(results.description, "AI | Cybersecurity & ESET | Back To The Essentials");
+    assert_eq!(results.location, "Bratislava, Slovakia");
+    assert_eq!(results.about.is_some(), true);
+    println!("{}", results.about.unwrap());
+    match results.experience {
+        Some(experience) => {
+            for experience in experience.iter() {
+                println!("{}", *experience);
+            }
+            assert_eq!(experience.len(), 5);
+        }
+        None => {
+            assert!(false, "No experience found");
+        }
+    }
+    match results.education {
+        Some(education) => {
+            assert_eq!(education.len(), 1);
+            assert_eq!(education[0].title, "Brno University of Technology");
+            assert_eq!(education[0].field, "Information Technology");
+            assert_eq!(education[0].degree, "Bachelor's degree");
+        }
+        None => {
+            assert!(false, "No education found");
+        }
+    }
+    if let Some(_) = results.skills {
+        assert!(false, "Skills should be empty");
+    }
+    match results.languages {
+        Some(languages) => {
+            assert_eq!(languages.len(), 2);
+            assert_eq!(languages[0].language, "English");
+            assert_eq!(languages[1].language, "Slovak");
+        }
+        None => {
+            assert!(false, "No languages found");
+        }
+    }
+}

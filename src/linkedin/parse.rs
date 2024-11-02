@@ -393,7 +393,13 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
         Err(_) => return Err(ParseError(String::from_str("Failed to find name span").unwrap())),
     };
 
-    let profile_options = match driver.driver.find(By::XPath("//*[@id='hue-menu-trigger-ember51']")).await {
+    let profile_options = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[2]/section/div[2]/button",
+        ))
+        .await
+    {
         Ok(profile_options) => profile_options,
         Err(_) => return Err(ParseError(String::from_str("Failed to find profile options").unwrap())),
     };
@@ -403,7 +409,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
     };
 
     let linkedin_url = match driver
-        .find_until_loaded(By::XPath("/html/body/div[1]/div[2]/ul/li[2]/a"), Duration::from_secs(5))
+        .find_until_loaded(By::XPath("/html/body/div[1]/div[2]/ul//a"), Duration::from_secs(5))
         .await
     {
         Ok(linkedin_url_element) => match linkedin_url_element.attr("href").await {
@@ -687,8 +693,8 @@ pub async fn parse_language_entry(language_entry: WebElement, language_array: &m
             }
         },
         Err(_) => {
-            error!("Failed to find language fluency element");
-            return;
+            trace!("Failed to find language fluency element");
+            "".to_string()
         }
     };
     language_array.push(Language { language, fluency });
