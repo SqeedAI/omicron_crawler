@@ -238,21 +238,44 @@ pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     //Check if show more is needed to click
-    let parent = about_title.parent().await.unwrap();
-    let possible_show_more_button = parent.find(By::XPath(".//div/span/button")).await;
 
-    // In case we have show more, then the text element is also p instead of span
-    if let Ok(show_more_button) = possible_show_more_button {
-        trace!("Show more button found. Clicking...");
-        fatal_unwrap_e!(show_more_button.click().await, "Failed to click show more button {}");
-        let about_p = fatal_unwrap_e!(parent.find(By::XPath("./p")).await, "Failed to find about p {}");
-        return Some(about_p.text().await.unwrap().replace("Show less", ""));
+    //In case we have show more, then the text element is also p instead of span. This is the first branch
+    let about_section = about_title.parent().await.unwrap();
+    if let Some(about_p) = parse_about_show_more(&about_section).await {
+        return Some(about_p);
     }
-    trace!("No show more button for about found.");
 
-    //In case we don't have show more, then the text element is span
-    let about_span = fatal_unwrap_e!(parent.find(By::XPath(".//div/span")).await, "Failed to find about span {}");
-    Some(about_span.text().await.unwrap())
+    //In case we don't have show more, then the text element is span. This is another branch / case
+    match about_section.find(By::XPath(".//div/span")).await {
+        Ok(about_span) => match about_span.text().await {
+            Ok(about_span) => return Some(about_span),
+            Err(_) => warn!("Failed to get about span text"),
+        },
+        Err(_) => warn!("Failed to find about span"),
+    }
+    None
+}
+pub async fn parse_about_show_more(about_section: &WebElement) -> Option<String> {
+    let show_more_button = match about_section.find(By::XPath(".//div/span/button")).await {
+        Ok(show_more_button) => show_more_button,
+        Err(_) => {
+            warn!("Failed to find show more button");
+            return None;
+        }
+    };
+
+    trace!("Show more button found. Clicking...");
+    match show_more_button.click().await {
+        Ok(_) => match about_section.find(By::XPath("./p")).await {
+            Ok(about_p) => match about_p.text().await {
+                Ok(about_p) => return Some(about_p.replace("Show less", "")),
+                Err(_) => warn!("Failed to get about p text"),
+            },
+            Err(_) => warn!("Failed to find about p"),
+        },
+        Err(_) => warn!("Failed to click about show more button"),
+    }
+    None
 }
 pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> {
     let experience_section = match driver
@@ -298,16 +321,30 @@ pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> 
 }
 
 pub async fn parse_timeline(timeline: WebElement, results: &mut Vec<Experience>) {
-    let experience_entries = fatal_unwrap_e!(timeline.find_all(By::XPath("./li")).await, "Failed to find experience list {}");
+    let experience_entries = match timeline.find_all(By::XPath("./li")).await {
+        Ok(experience_entries) => experience_entries,
+        Err(_) => {
+            warn!("Failed to find experience list");
+            return;
+        }
+    };
+
     for experience_entry in experience_entries {
-        let title = fatal_unwrap_e!(
-            experience_entry.find(By::XPath(".//h3")).await,
-            "Failed to find experience title {}"
-        );
-        let time = fatal_unwrap_e!(
-            experience_entry.find(By::XPath("./div/p[1]/span")).await,
-            "Failed to find experience duration {}"
-        );
+        let title = match experience_entry.find(By::XPath(".//h3")).await {
+            Ok(title) => title,
+            Err(_) => {
+                warn!("Failed to find experience title");
+                continue;
+            }
+        };
+        let time = match experience_entry.find(By::XPath("./div/p[1]/span")).await {
+            Ok(time) => time,
+            Err(_) => {
+                warn!("Failed to find experience duration");
+                continue;
+            }
+        };
+
         let time_text = time.text().await.unwrap();
         let interval = Interval::from_str(time_text.as_str(), "–").unwrap();
         results.push(Experience {
@@ -318,22 +355,33 @@ pub async fn parse_timeline(timeline: WebElement, results: &mut Vec<Experience>)
 }
 
 pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut Vec<Experience>) {
-    let possible_timeline = experience_entry.find(By::XPath("./ul")).await;
-    if let Ok(timeline) = possible_timeline {
-        parse_timeline(timeline, result).await;
-        return;
-    } else {
-        trace!("Experience timeline not found.");
-    }
+    //We either parse as a timeline or as a basic experience. Two different branches
+    match experience_entry.find(By::XPath("./ul")).await {
+        Ok(timeline) => {
+            parse_timeline(timeline, result).await;
+            return;
+        }
+        Err(_) => {
+            trace!("No experience timeline found");
+        }
+    };
 
-    let job_title = fatal_unwrap_e!(
-        experience_entry.find(By::XPath(".//h2")).await,
-        "Failed to find experience title {}"
-    );
-    let time = fatal_unwrap_e!(
-        experience_entry.find(By::XPath(".//p/span")).await,
-        "Failed to find experience duration {}"
-    );
+    let job_title = match experience_entry.find(By::XPath(".//h2")).await {
+        Ok(job_title) => job_title,
+        Err(_) => {
+            warn!("Failed to find job title");
+            return;
+        }
+    };
+
+    let time = match experience_entry.find(By::XPath(".//p/span")).await {
+        Ok(time) => time,
+        Err(_) => {
+            warn!("Failed to find experience duration");
+            return;
+        }
+    };
+
     let time_text = time.text().await.unwrap();
     let interval = Interval::from_str(time_text.as_str(), "–").unwrap();
     let title = job_title.text().await.unwrap();

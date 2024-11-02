@@ -14,6 +14,7 @@ async fn test_parse_1() {
     assert_eq!(results.description, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
     assert_eq!(results.location, "Slovakia");
     assert_eq!(results.about.is_some(), true);
+    println!("{}", results.about.unwrap());
     match results.experience {
         Some(experience) => {
             for experience in experience.iter() {
