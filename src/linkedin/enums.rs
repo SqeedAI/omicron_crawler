@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fmt::Display;
-
+#[derive(serde::Deserialize, Debug)]
 pub enum Functions {
     Accounting,
     Administrative,
@@ -61,7 +61,7 @@ impl Display for Functions {
         write!(f, "{}", s)
     }
 }
-
+#[derive(serde::Deserialize)]
 pub enum SeniorityLevel {
     Owner,
     CXO,

@@ -11,6 +11,8 @@ http = "1.1.0"
 undetected-chromedriver = "0.1.2"
 rand = "0.8.5"
 regex = "1.11.0"
+actix-web = "4"
+serde = "1.0.214"
 
 [lib]
 path = "src/lib.rs"
@@ -18,3 +20,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "omicron_crawler"
 path = "src/main.rs"
+
+[[bin]]
+name = "omicron_crawler_server"
+path = "src/server.rs"
