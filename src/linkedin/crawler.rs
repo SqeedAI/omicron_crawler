@@ -9,7 +9,7 @@ use std::time::Duration;
 use thirtyfour::{By, WindowType};
 
 pub struct Crawler {
-    driver_ext: DriverSession,
+    pub driver_ext: DriverSession,
 }
 
 impl Crawler {
@@ -56,5 +56,11 @@ impl Crawler {
         driver_ext.driver.close_window().await.unwrap();
         driver_ext.driver.switch_to_window(original_tab).await.unwrap();
         result
+    }
+
+    pub async fn quit(&self) {
+        if let Err(e) = self.driver_ext.quit().await {
+            error!("Failed to quit the WebDriver");
+        }
     }
 }

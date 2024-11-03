@@ -1,5 +1,7 @@
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
+#[derive(Serialize, Debug)]
 pub struct SearchResult {
     pub name: String,
     pub title: String,
@@ -11,7 +13,7 @@ impl Display for SearchResult {
         write!(f, "name: {} title: {} url: {}", self.name, self.title, self.sales_url)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Profile {
     pub name: String,
     pub url: String,
@@ -65,7 +67,7 @@ impl Display for Profile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Experience {
     pub position: String,
     pub interval: Interval,
@@ -75,7 +77,7 @@ impl Display for Experience {
         write!(f, "title: {} {}", self.position, self.interval)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Education {
     pub title: String,
     pub field: String,
@@ -87,7 +89,7 @@ impl Display for Education {
         write!(f, "title: {}\ndegree: {}\nduration: {:?}", self.title, self.degree, self.interval)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Interval {
     pub start: String,
     pub end: String,
@@ -108,7 +110,7 @@ impl Display for Interval {
         write!(f, "start: {} end: {}", self.start, self.end)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Language {
     pub language: String,
     pub fluency: String,
@@ -120,7 +122,7 @@ impl Display for Language {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Skill {
     pub name: String,
     pub endorsements: u16,

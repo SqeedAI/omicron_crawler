@@ -1,5 +1,10 @@
-use actix_web::{post, web, HttpResponse};
+use actix_web::web::Json;
+use actix_web::{get, post, HttpResponse};
+use log::warn;
+use omicron_crawler::driver_service::driver_service;
+use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions;
+use omicron_crawler::utils::{driver_host_from_env, driver_port_from_env};
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Search {
@@ -8,26 +13,60 @@ pub struct Search {
     geography: Option<String>,
 }
 
-#[post("/search")]
-pub async fn search(search_params: web::Json<Search>) -> HttpResponse {
-    // let search_request = search_params.into_inner();
-    // let crawler = get_crawler().await;
-    // match crawler
-    //     .set_search_filters(search_request.function, search_request.job_title, search_request.geography)
-    //     .await
-    // {
-    //     Ok(results) => results,
-    //     Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to perform search {}", e)),
-    // };
-    // let results = match crawler.parse_search().await {
-    //     Ok(results) => results,
-    //     Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to parse search results {}", e)),
-    // };
-    // let first = results.first().unwrap();
-    // let profile = match crawler.parse_profile(&first.sales_url).await {
-    //     Ok(profile) => profile,
-    //     Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to parse profile {}", e)),
-    // };
-    // println!("{}", profile);
-    HttpResponse::Ok().body("Performing search...") // TODO
+#[derive(serde::Deserialize, Debug)]
+pub struct Url {
+    sales_url: String,
+}
+
+#[get("/search")]
+pub async fn search(search_params: Json<Search>) -> HttpResponse {
+    driver_service().await;
+    let search_request = search_params.into_inner();
+    let host = driver_host_from_env();
+    let port = driver_port_from_env();
+    let crawler = Crawler::new(host, port).await;
+
+    match crawler
+        .set_search_filters(search_request.function, search_request.job_title, search_request.geography)
+        .await
+    {
+        Ok(results) => results,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to perform search {}", e)),
+    };
+    let results = match crawler.parse_search().await {
+        Ok(results) => results,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to parse search results {}", e)),
+    };
+    crawler.quit().await;
+    HttpResponse::Ok().json(results)
+}
+
+#[get("/profiles")]
+pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
+    driver_service().await;
+    let url_request = url_requests.into_inner();
+    let mut tasks = Vec::with_capacity(url_request.len());
+    let mut response_profiles = Vec::new();
+
+    for url in url_request.iter() {
+        let sales_url = url.sales_url.clone();
+        tasks.push(tokio::spawn(async move {
+            let host = driver_host_from_env();
+            let port = driver_port_from_env();
+            let crawler = Crawler::new(host, port).await;
+            crawler.parse_profile(sales_url.as_str()).await
+        }));
+    }
+
+    for task in tasks.into_iter() {
+        let url = task.await.unwrap();
+        match url {
+            Ok(url) => response_profiles.push(url),
+            Err(e) => {
+                warn!("{}", e);
+            }
+        }
+    }
+
+    HttpResponse::Ok().json(response_profiles)
 }

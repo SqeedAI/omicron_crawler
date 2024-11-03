@@ -4,7 +4,9 @@ use std::sync::Once;
 pub struct Logger;
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        println!("src is: {}", metadata.target());
+        if !(metadata.target().starts_with("omi") || metadata.target().starts_with("actix")) {
+            return false;
+        }
         metadata.level() <= log::max_level() // Compare against the max level we set
     }
 
