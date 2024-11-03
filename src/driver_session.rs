@@ -22,6 +22,8 @@ pub struct DriverSession {
     user_dir: PathBuf,
 }
 
+//OPTIMIZE Consider driver pool for multiple requests
+
 impl DriverSession {
     pub async fn new(host: String, port: String) -> Self {
         let mut caps = DesiredCapabilities::chrome();
@@ -69,8 +71,10 @@ impl DriverSession {
     }
 }
 
+// OPTIMIZE By using driver pool, we avoid copying the user data to the tmp folder
 pub fn create_user_dir() -> PathBuf {
     let mut target_dir = current_dir().unwrap();
+    //OPTIMIZE Done during runtime. This is not necessary. Can be done during compile time
     target_dir.push("tmp");
     if !target_dir.exists() {
         fs::create_dir_all(target_dir.clone()).unwrap();
