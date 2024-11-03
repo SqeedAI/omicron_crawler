@@ -6,6 +6,8 @@ use omicron_crawler::driver_service::driver_service;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions;
 use omicron_crawler::utils::{driver_host_from_env, driver_port_from_env};
+use std::cmp::min;
+use std::thread;
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Search {
@@ -46,31 +48,43 @@ pub async fn search(search_params: Json<Search>) -> HttpResponse {
 pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
     driver_service().await;
     let url_request = url_requests.into_inner();
-    let mut tasks = Vec::with_capacity(url_request.len());
-    let mut response_profiles = Vec::new();
-
-    // Create tasks for parallel execution
-    for url in url_request {
-        let sales_url = url.sales_url.clone();
-        tasks.push(task::spawn_blocking(move || async move {
-            let host = driver_host_from_env();
-            let port = driver_port_from_env();
-            let crawler = Crawler::new(host, port).await;
-            let result = crawler.parse_profile(sales_url.as_str()).await;
-            crawler.quit().await;
-            result
-        }));
-    }
-
-    for task in tasks.into_iter() {
-        let url = task.await.unwrap().await;
-        match url {
-            Ok(url) => response_profiles.push(url),
-            Err(e) => {
-                warn!("{}", e);
+    let parsed_profiles = thread::scope(|s| {
+        let mut response_profiles = Vec::new();
+        let chunk_size = 2;
+        let mut offset = 0;
+        let end = url_request.len();
+        let mut tasks = Vec::with_capacity(chunk_size);
+        while offset < end {
+            let current_iter_end = min(offset + chunk_size, end);
+            for i in offset..current_iter_end {
+                let url = &url_request[i];
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                tasks.push(s.spawn(move || {
+                    rt.block_on(async move {
+                        let host = driver_host_from_env();
+                        let port = driver_port_from_env();
+                        let crawler = Crawler::new(host, port).await;
+                        let result = crawler.parse_profile(url.sales_url.as_str()).await;
+                        crawler.quit().await;
+                        result
+                    })
+                }));
             }
-        }
-    }
 
-    HttpResponse::Ok().json(response_profiles)
+            while tasks.len() > 0 {
+                let task = tasks.pop().unwrap();
+                let result = task.join().unwrap();
+                match result {
+                    Ok(result) => response_profiles.push(result),
+                    Err(e) => {
+                        warn!("{}", e);
+                    }
+                }
+            }
+            offset = current_iter_end;
+        }
+        response_profiles
+    });
+
+    HttpResponse::Ok().json(parsed_profiles)
 }

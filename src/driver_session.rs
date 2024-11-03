@@ -23,13 +23,6 @@ pub struct DriverSession {
 }
 
 impl DriverSession {
-    async fn cleanup(&self) {
-        let driver = unsafe { std::ptr::read(&self.driver) };
-        if let Err(e) = driver.quit().await {
-            error!("Failed to quit the WebDriver: {}", e);
-        }
-    }
-
     pub async fn new(host: String, port: String) -> Self {
         let mut caps = DesiredCapabilities::chrome();
         let user_dir = create_user_dir();
@@ -105,6 +98,12 @@ pub fn create_user_dir() -> PathBuf {
 
 pub fn get_undetected_chromedriver_args() -> Vec<&'static str> {
     vec![
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-logging",
+        "--no-sandbox",
+        "--headless",    // Add headless mode
+        "--disable-gpu", // Recommended for headless
         "--disable-blink-features=AutomationControlled",
         "--disable-infobars",
         "--disable-notifications",

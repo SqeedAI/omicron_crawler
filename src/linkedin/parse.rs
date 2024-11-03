@@ -384,6 +384,7 @@ pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut V
 }
 
 pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str) -> CrawlerResult<Profile> {
+    info!("Going to sales profile {}", sales_profile_url);
     driver.driver.goto(sales_profile_url).await.unwrap();
     let name_span = match driver
         .find_until_loaded(By::XPath(".//h1[@data-anonymize='person-name']"), Duration::from_secs(5))
