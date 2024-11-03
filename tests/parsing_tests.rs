@@ -3,7 +3,7 @@ use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::{driver_host_from_env, driver_path_from_env, driver_port_from_env};
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
     let host = driver_host_from_env();
@@ -65,6 +65,7 @@ async fn test_parse_1() {
             assert!(false, "No languages found");
         }
     }
+    crawler.quit().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -134,6 +135,7 @@ async fn test_parse_2() {
             assert!(false, "No languages found");
         }
     }
+    crawler.quit().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -195,6 +197,7 @@ async fn test_parse_3() {
         }
         None => {}
     }
+    crawler.quit().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -250,4 +253,5 @@ async fn test_parse_4() {
             assert!(false, "No languages found");
         }
     }
+    crawler.quit().await;
 }
