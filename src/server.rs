@@ -9,7 +9,6 @@ use omicron_crawler::utils::log_level_from_env;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     Logger::init(log_level_from_env());
-    let driver = omicron_crawler::driver_ext::WebDriverExt::new("8888".to_string(), "./drivers/chromedriver.exe").await;
     let (host, port) = omicron_crawler::utils::host_data_from_env();
     HttpServer::new(|| App::new().service(hello).service(search))
         .bind((host, port))?

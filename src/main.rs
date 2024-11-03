@@ -17,7 +17,7 @@ async fn main() {
     let selenium = Crawler::new("8888".to_string()).await;
     fatal_unwrap_e!(
         selenium
-            .perform_search(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
+            .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
             .await,
         "{}"
     );

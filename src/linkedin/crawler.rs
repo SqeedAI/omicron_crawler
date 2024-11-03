@@ -24,7 +24,7 @@ impl Crawler {
             "Failed to go to linkedin {}"
         );
     }
-    pub async fn perform_search(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
+    pub async fn set_search_filters(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
         let driver_ext = &self.driver_ext;
         match driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await {
             Ok(_) => {}
