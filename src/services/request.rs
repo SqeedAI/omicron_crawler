@@ -1,3 +1,4 @@
+use actix_web::rt::task;
 use actix_web::web::Json;
 use actix_web::{get, post, HttpResponse};
 use log::warn;
@@ -48,18 +49,21 @@ pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
     let mut tasks = Vec::with_capacity(url_request.len());
     let mut response_profiles = Vec::new();
 
-    for url in url_request.iter() {
+    // Create tasks for parallel execution
+    for url in url_request {
         let sales_url = url.sales_url.clone();
-        tasks.push(tokio::spawn(async move {
+        tasks.push(task::spawn_blocking(move || async move {
             let host = driver_host_from_env();
             let port = driver_port_from_env();
             let crawler = Crawler::new(host, port).await;
-            crawler.parse_profile(sales_url.as_str()).await
+            let result = crawler.parse_profile(sales_url.as_str()).await;
+            crawler.quit().await;
+            result
         }));
     }
 
     for task in tasks.into_iter() {
-        let url = task.await.unwrap();
+        let url = task.await.unwrap().await;
         match url {
             Ok(url) => response_profiles.push(url),
             Err(e) => {
