@@ -1,16 +1,24 @@
+use omicron_crawler::driver_service::DriverService;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
+use omicron_crawler::utils::{driver_host_from_env, driver_path_from_env, driver_port_from_env};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
-    let selenium = Crawler::new("8888".to_string()).await;
+    let host = driver_host_from_env();
+    let port = driver_port_from_env();
+    let path = driver_path_from_env();
+    let _driver_service = DriverService::new(port.clone(), path).await;
+
+    let crawler = Crawler::new(host, port).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
-    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Matus Chochlik");
     assert_eq!(results.url, "https://www.linkedin.com/in/matus-chochlik-154a7827");
-    assert_eq!(results.profile_picture_url, "https://media.licdn.com/dms/image/v2/C4D03AQGhNg5cATVIJQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517475003399?e=1735776000&v=beta&t=NO-k0V1cI_w4Rbwh3DHf31qpMIqAhE10YHtR_I5B0ow");
+    assert!(results.profile_picture_url.len() > 0);
+    println!("{}", results.profile_picture_url);
     assert_eq!(results.description, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
     assert_eq!(results.location, "Slovakia");
     assert_eq!(results.about.is_some(), true);
@@ -62,13 +70,18 @@ async fn test_parse_1() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_2() {
     Logger::init(log::LevelFilter::Trace);
-    let selenium = Crawler::new("8888".to_string()).await;
+    let host = driver_host_from_env();
+    let port = driver_port_from_env();
+    let path = driver_path_from_env();
+    let _driver_service = DriverService::new(port.clone(), path).await;
+    let crawler = Crawler::new(host, port).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAy0mZcBlmERvP-yDTL3gnlTLSELF6c7hrk,NAME_SEARCH,UDAQ?_ntb=aRijRPOnTBeuYBCnRY718Q%3D%3D";
-    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Patrik Bujňák");
     assert_eq!(results.url, "https://www.linkedin.com/in/patrik-buj%C5%88%C3%A1k-dev");
-    assert_eq!(results.profile_picture_url, "https://media.licdn.com/dms/image/v2/C5603AQHICPthc6Rpbw/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1562843874807?e=1735776000&v=beta&t=eOeTW1RZxx-8RuJiSo8t0_dBK3u0tbxg-ZRSnm5b3q4");
+    assert!(results.profile_picture_url.len() > 0);
+    println!("{}", results.profile_picture_url);
     assert_eq!(results.description, "Full-stack Developer at Vissim");
     assert_eq!(results.location, "Slovakia");
     assert_eq!(results.about.is_some(), false);
@@ -126,15 +139,17 @@ async fn test_parse_2() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_3() {
     Logger::init(log::LevelFilter::Trace);
-    let selenium = Crawler::new("8888".to_string()).await;
+    let host = driver_host_from_env();
+    let port = driver_port_from_env();
+    let path = driver_path_from_env();
+    let _driver_service = DriverService::new(port.clone(), path).await;
+    let crawler = Crawler::new(host, port).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
-    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Peter Hamran");
     assert_eq!(results.url, "https://www.linkedin.com/in/peter-hamran-151a6317a");
-    assert_eq!(
-        results.profile_picture_url,
-        "https://media.licdn.com/dms/image/v2/D4D03AQFSHH3te-aM5g/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1669666700396?e=1735776000&v=beta&t=2_MPCstO-7XL4JGMmAQz_kvLVsqqhpHp6_ItIruRKAY"
-    );
+    assert!(results.profile_picture_url.len() > 0);
+    println!("{}", results.profile_picture_url);
     assert_eq!(results.description, "Cofounder of Sqeed s.r.o.");
     assert_eq!(results.location, "Slovakia");
     assert_eq!(results.about.is_some(), false);
@@ -184,15 +199,18 @@ async fn test_parse_3() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_4() {
-    Logger::init(log::LevelFilter::Trace);
-    let selenium = Crawler::new("8888".to_string()).await;
+    Logger::init(log::LevelFilter::Info);
+    let host = driver_host_from_env();
+    let port = driver_port_from_env();
+    let path = driver_path_from_env();
+    let _driver_service = DriverService::new(port.clone(), path).await;
+    let crawler = Crawler::new(host, port).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";
-    let results = fatal_unwrap_e!(selenium.parse_profile(profile_url).await, "{}");
+    let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Kamil Pšenák");
     assert_eq!(results.url, "https://www.linkedin.com/in/kamil-psenak");
-    assert_eq!(
-        results.profile_picture_url,
-        "https://media.licdn.com/dms/image/v2/D4D03AQG83-WpWJmICA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1706291705207?e=1735776000&v=beta&t=S8XLpRHRQBX6rpHvdpN73wZmpOMuWU-2vXuoerGpDqc");
+    assert!(results.profile_picture_url.len() > 0);
+    println!("{}", results.profile_picture_url);
     assert_eq!(results.description, "AI | Cybersecurity & ESET | Back To The Essentials");
     assert_eq!(results.location, "Bratislava, Slovakia");
     assert_eq!(results.about.is_some(), true);

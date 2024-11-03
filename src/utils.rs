@@ -33,3 +33,15 @@ pub fn host_data_from_env() -> (String, u16) {
     };
     (host, port)
 }
+
+pub fn driver_path_from_env() -> String {
+    std::env::var("DRIVER_PATH").unwrap_or_else(|_| "./drivers/chromedriver.exe".to_string())
+}
+
+pub fn driver_host_from_env() -> String {
+    std::env::var("DRIVER_HOST").unwrap_or_else(|_| "localhost".to_string())
+}
+
+pub fn driver_port_from_env() -> String {
+    std::env::var("DRIVER_PORT").unwrap_or_else(|_| "9515".to_string())
+}

@@ -1,4 +1,4 @@
-use crate::driver_ext::WebDriverExt;
+use crate::driver_session::DriverSession;
 use crate::errors::CrawlerError::{InteractionError, ParseError};
 use crate::errors::{CrawlerError, CrawlerResult};
 use crate::linkedin::enums::Functions;
@@ -15,7 +15,7 @@ use thirtyfour::error::WebDriverResult;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
 use thirtyfour::{By, Key, WebDriver, WebElement};
 
-pub async fn set_function_search(driver: &WebDriverExt, function: Functions) -> CrawlerResult<()> {
+pub async fn set_function_search(driver: &DriverSession, function: Functions) -> CrawlerResult<()> {
     let function_button = match driver
         .find_until_loaded(
             By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div/button"),
@@ -56,7 +56,7 @@ pub async fn set_function_search(driver: &WebDriverExt, function: Functions) -> 
     Ok(())
 }
 
-pub async fn set_job_title_search(driver: &WebDriverExt, job_title: String) -> CrawlerResult<()> {
+pub async fn set_job_title_search(driver: &DriverSession, job_title: String) -> CrawlerResult<()> {
     let job_title_button = match driver
         .find_until_loaded(
             By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[2]/div/button"),
@@ -99,7 +99,7 @@ pub async fn set_job_title_search(driver: &WebDriverExt, job_title: String) -> C
     Ok(())
 }
 
-pub async fn set_geography_search(driver: &WebDriverExt, geography: String) -> CrawlerResult<()> {
+pub async fn set_geography_search(driver: &DriverSession, geography: String) -> CrawlerResult<()> {
     let geography_button = match driver
         .find_until_loaded(
             By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[3]/div/fieldset[1]/div/button"),
@@ -143,7 +143,7 @@ pub async fn set_geography_search(driver: &WebDriverExt, geography: String) -> C
     Ok(())
 }
 
-pub async fn parse_search(driver: &WebDriverExt) -> CrawlerResult<Vec<SearchResult>> {
+pub async fn parse_search(driver: &DriverSession) -> CrawlerResult<Vec<SearchResult>> {
     let domain_url = get_domain_url(driver.driver.current_url().await.unwrap().as_str());
     let search_list = match driver
         .find_until_loaded(By::Id("search-results-container"), Duration::from_secs(5))
@@ -227,7 +227,7 @@ pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<Sear
     Ok(())
 }
 
-pub async fn parse_about(driver: &WebDriverExt) -> Option<String> {
+pub async fn parse_about(driver: &DriverSession) -> Option<String> {
     let possible_about_title = driver.driver.find(By::XPath("//h1[normalize-space()='About']")).await;
     if let Err((err)) = possible_about_title {
         info!("No about section found.");
@@ -274,7 +274,7 @@ pub async fn parse_about_show_more(about_section: &WebElement) -> Option<String>
     }
     None
 }
-pub async fn parse_experience(driver: &WebDriverExt) -> Option<Vec<Experience>> {
+pub async fn parse_experience(driver: &DriverSession) -> Option<Vec<Experience>> {
     let experience_section = match driver
         .driver
         .find(By::XPath("//section[@data-sn-view-name='feature-lead-experience']"))
@@ -383,7 +383,7 @@ pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut V
     result.push(Experience { position: title, interval });
 }
 
-pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str) -> CrawlerResult<Profile> {
+pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str) -> CrawlerResult<Profile> {
     driver.driver.goto(sales_profile_url).await.unwrap();
     let name_span = match driver
         .find_until_loaded(By::XPath(".//h1[@data-anonymize='person-name']"), Duration::from_secs(5))
@@ -464,7 +464,7 @@ pub async fn parse_sales_profile(driver: &WebDriverExt, sales_profile_url: &str)
     })
 }
 
-pub async fn parse_education(driver: &WebDriverExt) -> Option<Vec<Education>> {
+pub async fn parse_education(driver: &DriverSession) -> Option<Vec<Education>> {
     let education_list = match driver
         .driver
         .find_all(By::XPath(
@@ -549,7 +549,7 @@ pub async fn parse_education_entry(education_entry: WebElement, education_array:
     });
 }
 
-pub async fn parse_skills(driver: &WebDriverExt) -> Option<Vec<Skill>> {
+pub async fn parse_skills(driver: &DriverSession) -> Option<Vec<Skill>> {
     let skills_title = match driver
         .driver
         .find(By::XPath("//h2[contains(., 'Featured skills and endorsements')]"))
@@ -647,7 +647,7 @@ pub async fn parse_skill_entry(entry: WebElement, skill_entry: &mut Vec<Skill>) 
     });
 }
 
-pub async fn parse_languages(driver: &WebDriverExt) -> Option<Vec<Language>> {
+pub async fn parse_languages(driver: &DriverSession) -> Option<Vec<Language>> {
     let languages_title = match driver.driver.find(By::XPath("//h2[contains(., 'Languages')]")).await {
         Ok(languages_title) => languages_title,
         Err(_) => {
@@ -700,7 +700,7 @@ pub async fn parse_language_entry(language_entry: WebElement, language_array: &m
     language_array.push(Language { language, fluency });
 }
 
-pub async fn parse_profile_picture(driver: &WebDriverExt) -> String {
+pub async fn parse_profile_picture(driver: &DriverSession) -> String {
     match driver
         .find_until_loaded(By::XPath("//div/img[@data-anonymize='headshot-photo']"), Duration::from_secs(5))
         .await

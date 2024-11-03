@@ -1,4 +1,4 @@
-use crate::driver_ext::WebDriverExt;
+use crate::driver_session::DriverSession;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::enums::{Functions, SeniorityLevel};
@@ -9,12 +9,12 @@ use std::time::Duration;
 use thirtyfour::{By, WindowType};
 
 pub struct Crawler {
-    driver_ext: WebDriverExt,
+    driver_ext: DriverSession,
 }
 
 impl Crawler {
-    pub async fn new(port: String) -> Self {
-        let driver_ext = WebDriverExt::new(port, "./drivers/chromedriver.exe").await;
+    pub async fn new(host: String, port: String) -> Self {
+        let driver_ext = DriverSession::new(host, port).await;
         Self { driver_ext }
     }
     pub async fn load_linkedin(&self) {
