@@ -1,0 +1,19 @@
+meta {
+  name: search
+  type: http
+  seq: 3
+}
+
+get {
+  url: 127.0.0.1:8080/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "function": "Engineering",
+    "job_title": "Software Engineer",
+    "geography": "Slovakia"
+  }
+}

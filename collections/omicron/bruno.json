@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "omicron",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
