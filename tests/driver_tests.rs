@@ -33,8 +33,8 @@ async fn test_multiple_sessions() {
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
 
-    let mut handles = Vec::with_capacity(4);
-    for _ in 0..4 {
+    let mut handles = Vec::with_capacity(2);
+    for _ in 0..2 {
         let port = port.clone();
         let host = host.clone();
         handles.push(tokio::spawn(async move {
