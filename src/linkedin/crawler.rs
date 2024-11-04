@@ -2,7 +2,7 @@ use crate::driver_session::DriverSession;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::enums::{Functions, SeniorityLevel};
-use crate::linkedin::parse::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::parse_sales::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::profiles::{Profile, SearchResult};
 use std::result;
 use std::time::Duration;
