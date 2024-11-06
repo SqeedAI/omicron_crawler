@@ -19,7 +19,7 @@ impl<'a> SessionProxy<'a> {
 }
 
 
-impl Drop for SessionProxy {
+impl<'a> Drop for SessionProxy<'a> {
     fn drop(&mut self) {
         let session = self.session.take().unwrap();
         fatal_unwrap_e!(self.driver_session_pool.push(session), "failed to push: {}");
@@ -31,7 +31,7 @@ pub struct DriverSessionPool {
 }
 
 impl DriverSessionPool {
-    pub fn new(host: &str, port: &str, session_count: u16) -> Self {
+    pub async fn new(host: &str, port: &str, session_count: u16) -> Self {
         let session_pool = DriverSessionPool {
             available_sessions: ArrayQueue::new(session_count as usize),
         };
@@ -39,7 +39,7 @@ impl DriverSessionPool {
         let session_dirs = create_sessions_dirs(session_count);
 
         for session_dir in session_dirs {
-            let driver_session = DriverSession::new(host, port, session_dir);
+            let driver_session = DriverSession::new(host, port, session_dir).await;
             fatal_unwrap_e!(session_pool.available_sessions.push(driver_session), "Failed to add session to pool: {}");
         }
         session_pool
