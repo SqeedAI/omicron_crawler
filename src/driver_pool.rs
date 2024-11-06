@@ -12,7 +12,7 @@ struct SessionProxy<'a> {
     session: Option<DriverSession>,
 }
 
-impl SessionProxy {
+impl<'a> SessionProxy<'a> {
     pub fn new(session: DriverSession, driver_session_pool: &ArrayQueue<DriverSession>) -> Self {
         Self { session:Some(session), driver_session_pool }
     }
