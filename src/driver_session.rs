@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 pub struct DriverSession {
     user_dir: PathBuf,
+    driver: WebDriver
 }
 
 //OPTIMIZE Consider driver pool for multiple requests
@@ -41,7 +42,7 @@ impl DriverSession {
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
             "Failed to create session: {}"
         );
-        Self { user_dir }
+        Self { driver, user_dir }
     }
     pub async fn find_until_loaded(&self, by: By, timeout: Duration) -> WebDriverResult<WebElement> {
         let driver = &self.driver;
@@ -66,35 +67,6 @@ impl DriverSession {
         }
         result
     }
-}
-
-// OPTIMIZE By using driver pool, we avoid copying the user data to the tmp folder
-pub fn create_user_dir() -> PathBuf {
-    let mut target_dir = current_dir().unwrap();
-    //OPTIMIZE Done during runtime. This is not necessary. Can be done during compile time
-    target_dir.push("tmp");
-    if !target_dir.exists() {
-        fs::create_dir_all(target_dir.clone()).unwrap();
-    }
-
-    let uuid = Uuid::new_v4().to_string();
-
-    let mut user_data_dir = current_dir().unwrap();
-    user_data_dir.push("user_data");
-    target_dir.push(uuid);
-    if !target_dir.exists() {
-        info!("Creating {}", target_dir.to_str().unwrap());
-        fs::create_dir_all(target_dir.clone()).unwrap();
-    }
-    let copy_options = CopyOptions::new().content_only(true);
-    let target_dir_buff = target_dir.clone();
-    info!(
-        "Copying user data from {} to {}",
-        user_data_dir.to_str().unwrap(),
-        target_dir.to_str().unwrap()
-    );
-    fs_extra::dir::copy(user_data_dir.clone(), target_dir, &copy_options).unwrap();
-    target_dir_buff
 }
 
 pub fn get_undetected_chromedriver_args() -> Vec<&'static str> {

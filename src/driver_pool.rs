@@ -7,31 +7,33 @@ use fs_extra::dir::CopyOptions;
 use uuid::Uuid;
 use crate::driver_session::DriverSession;
 
-struct SessionProxy {
-    driver_session_pool: Weak<ArrayQueue<DriverSession>>,
-    session: DriverSession,
+struct SessionProxy<'a> {
+    driver_session_pool: &'a ArrayQueue<DriverSession>,
+    session: Option<DriverSession>,
 }
 
 impl SessionProxy {
-    pub fn new(session: DriverSession, driver_session_pool: Weak<ArrayQueue<DriverSession>>) -> Self {
-        Self { session, driver_session_pool }
+    pub fn new(session: DriverSession, driver_session_pool: &ArrayQueue<DriverSession>) -> Self {
+        Self { session:Some(session), driver_session_pool }
     }
 }
 
 
 impl Drop for SessionProxy {
     fn drop(&mut self) {
+        let session = self.session.take().unwrap();
+        fatal_unwrap_e!(self.driver_session_pool.push(session), "failed to push: {}");
     }
 }
 
 pub struct DriverSessionPool {
-    available_sessions: Arc<ArrayQueue<DriverSession>>,
+    available_sessions: ArrayQueue<DriverSession>,
 }
 
 impl DriverSessionPool {
     pub fn new(host: &str, port: &str, session_count: u16) -> Self {
         let session_pool = DriverSessionPool {
-            available_sessions: Arc::new(ArrayQueue::new(session_count as usize)),
+            available_sessions: ArrayQueue::new(session_count as usize),
         };
 
         let session_dirs = create_sessions_dirs(session_count);
@@ -44,7 +46,7 @@ impl DriverSessionPool {
     }
     pub fn session(&mut self) -> Option<SessionProxy> {
         match self.available_sessions.pop() {
-            Some(session) => Some(SessionProxy::new(session, Arc::downgrade(&self.available_sessions))),
+            Some(session) => Some(SessionProxy::new(session, &self.available_sessions)),
             None => None,
         }
     }
