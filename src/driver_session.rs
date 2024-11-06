@@ -17,17 +17,14 @@ use tokio::sync::{futures, oneshot};
 use uuid::Uuid;
 
 pub struct DriverSession {
-    pub port: String,
-    pub driver: WebDriver,
     user_dir: PathBuf,
 }
 
 //OPTIMIZE Consider driver pool for multiple requests
 
 impl DriverSession {
-    pub async fn new(host: String, port: String) -> Self {
+    pub async fn new(host: &str, port: &str, user_dir: PathBuf) -> Self {
         let mut caps = DesiredCapabilities::chrome();
-        let user_dir = create_user_dir();
         let initial_args = get_undetected_chromedriver_args();
         for arg in initial_args.iter() {
             fatal_unwrap_e!(caps.add_arg(*arg), "Failed to add arg {}");
@@ -44,7 +41,7 @@ impl DriverSession {
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
             "Failed to create session: {}"
         );
-        Self { port, driver, user_dir }
+        Self { user_dir }
     }
     pub async fn find_until_loaded(&self, by: By, timeout: Duration) -> WebDriverResult<WebElement> {
         let driver = &self.driver;
