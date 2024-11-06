@@ -1,4 +1,3 @@
-// Function to generate a random string (as defined in the previous answer)
 pub fn generate_random_string(length: usize) -> String {
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
@@ -27,10 +26,7 @@ pub fn log_level_from_env() -> log::LevelFilter {
 
 pub fn host_data_from_env() -> (String, u16) {
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = match std::env::var("PORT") {
-        Ok(port) => port.parse::<u16>().unwrap_or_else(|_| 8080),
-        Err(_) => 8080,
-    };
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
     (host, port)
 }
 
