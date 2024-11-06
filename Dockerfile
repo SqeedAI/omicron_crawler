@@ -54,4 +54,5 @@ EXPOSE 9515
 
 COPY --from=build /home/crawler/target/release/omicron_crawler_server ./home/build/
 COPY --from=build /home/crawler/.env ./home/build
-
+COPY user_data.zip /home/crawler/user_data.zip
+RUN unzip /home/crawler/user_data.zip -d /home/build
