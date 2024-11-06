@@ -25,7 +25,7 @@ impl DriverService {
         let port_clone = port.clone();
 
         tokio::spawn(async move {
-            let expected_output = format!("ChromeDriver was started successfully on port {}", port_clone);
+            let expected_output = "success";
 
             let mut reader = BufReader::new(stdout);
             let mut out_str = String::new();
