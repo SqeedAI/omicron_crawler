@@ -1,4 +1,4 @@
-use crate::driver_pool::DriverSessionProxy;
+use crate::driver::driver_pool::DriverSessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::enums::Functions;

@@ -1,6 +1,6 @@
-use omicron_crawler::driver_pool::{DriverSessionPool, DriverSessionProxy};
-use omicron_crawler::driver_service::{chrome_driver_service, ChromeDriverService};
-use omicron_crawler::driver_session::DriverSession;
+use omicron_crawler::driver::driver_pool::{DriverSessionPool, GET_DRIVER_SESSION_POOL};
+use omicron_crawler::driver::driver_service::ChromeDriverService;
+use omicron_crawler::driver::init_chrome;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::{chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env};
@@ -13,6 +13,8 @@ async fn test_connection() {
     let host = driver_host_from_env();
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
+    init_chrome().await;
+    let pool = GET_DRIVER_SESSION_POOL().await;
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();

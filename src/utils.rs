@@ -51,3 +51,8 @@ pub fn driver_session_count_from_env() -> u16 {
         .parse::<u16>()
         .unwrap()
 }
+// OPTIMIZE Create an env struct that is initialized at the start of the program.
+// The struct shall contain correct types, not strings. Browser type should be an enum.
+pub fn browser_from_env() -> String {
+    std::env::var("BROWSER").unwrap_or_else(|_| "firefox".to_string())
+}

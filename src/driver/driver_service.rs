@@ -3,7 +3,7 @@ use crate::utils::{
 };
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
-use std::sync::{Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::{fs, mem};
 use tokio::sync::{oneshot, OnceCell};
 
@@ -111,31 +111,32 @@ impl GeckoDriverService {
         let mut cmd = Command::new(path_str);
         let mut gecko_driver = cmd.arg(format!("--port {}", port)).stdout(Stdio::piped()).spawn().unwrap();
         let stdout = gecko_driver.stdout.take().unwrap();
-        let signal = Condvar::new();
-        let signal_lock = Mutex::new(false);
-
+        let signal = Arc::new(Condvar::new());
+        let signal_lock = Arc::new(Mutex::new(false));
+        let tokio_signal = signal.clone();
+        let tokio_signal_lock = signal_lock.clone();
         tokio::spawn(async move {
             let mut buff_reader = BufReader::new(stdout);
             let mut out_str = String::new();
             loop {
-                let line = buff_reader.read_line(&mut out_str).await.unwrap();
-                if line.contains("Listening on") {
-                    let mut guard = signal_lock.lock().unwrap();
-                    guard = true;
-                    signal.notify_all();
+                let _ = buff_reader.read_line(&mut out_str);
+                if out_str.contains("Listening on") {
+                    let mut guard = tokio_signal_lock.lock().unwrap();
+                    *guard = true;
+                    tokio_signal.notify_all();
                     break;
                 }
-                println!("{}", line);
+                println!("{}", out_str);
             }
             // No point to have an if in a loop
             loop {
-                let line = buff_reader.read_line(&mut out_str).await.unwrap();
-                println!("{}", line);
+                let _ = buff_reader.read_line(&mut out_str);
+                println!("{}", out_str);
             }
         });
 
-        let _guard = signal_lock.lock().unwrap();
-        signal.wait_while(signal_lock, |val| *val).await;
+        let guard = signal_lock.lock().unwrap();
+        fatal_unwrap_e!(signal.wait_while(guard, |val| *val), "Failed to wait for geckodriver service: {}");
         Self {
             port,
             driver_service: gecko_driver,

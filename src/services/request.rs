@@ -2,8 +2,6 @@ use actix_web::rt::task;
 use actix_web::web::Json;
 use actix_web::{get, post, HttpResponse};
 use log::warn;
-use omicron_crawler::driver_pool::driver_session_pool;
-use omicron_crawler::driver_service::chrome_driver_service;
 use omicron_crawler::errors::{CrawlerError, CrawlerResult};
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions;

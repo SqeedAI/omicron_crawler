@@ -3,7 +3,7 @@ extern crate log;
 
 use log::LevelFilter;
 use omicron_crawler::driver::driver_pool::DriverSessionPool;
-use omicron_crawler::driver::driver_service::chrome_driver_service;
+use omicron_crawler::driver::driver_service::{chrome_driver_service, gecko_driver_service};
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
 use omicron_crawler::linkedin::crawler::Crawler;
@@ -24,7 +24,7 @@ async fn main() {
     if let Err(e) = dotenvy::from_filename(".env") {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
-    chrome_driver_service().await;
+    gecko_driver_service().await;
     let host = driver_host_from_env();
     let port = driver_port_from_env();
     let session_count = driver_session_count_from_env();

@@ -1,7 +1,5 @@
 use omicron_crawler::driver::driver_pool::DriverSessionPool;
 use omicron_crawler::driver::driver_service::ChromeDriverService;
-use omicron_crawler::driver_pool::DriverSessionPool;
-use omicron_crawler::driver_service::ChromeDriverService;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::{chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env};

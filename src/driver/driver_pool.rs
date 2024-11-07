@@ -1,14 +1,18 @@
 use crate::driver::driver_session::DriverSession;
+use crate::driver::traits::Capabilities;
 use crate::utils::{driver_host_from_env, driver_port_from_env, driver_session_count_from_env};
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
 use std::fs;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::atomic::AtomicU16;
 use std::sync::{Arc, Condvar, Mutex, Weak};
-use tokio::sync::{OnceCell, Semaphore};
+use thirtyfour::{ChromeCapabilities, FirefoxCapabilities};
+use tokio::sync::OnceCell;
 
 pub struct DriverSessionProxy<'a> {
     driver_session_pool: &'a DriverSessionPool,
@@ -37,7 +41,10 @@ pub struct DriverSessionPool {
 }
 
 impl DriverSessionPool {
-    pub async fn new(host: &str, port: &str, session_count: u16) -> Self {
+    pub async fn new<T>(host: &str, port: &str, session_count: u16) -> Self
+    where
+        T: Capabilities,
+    {
         let session_pool = DriverSessionPool {
             sessions_available_signal: Condvar::new(),
             sessions_available_signal_lock: Mutex::new(()),
@@ -48,7 +55,7 @@ impl DriverSessionPool {
         let zipped_iter = session_dirs.into_iter().zip(0..session_count);
 
         for (session_dir, _) in zipped_iter.into_iter() {
-            let driver_session = DriverSession::new(host, port, session_dir).await;
+            let driver_session = DriverSession::new::<T>(host, port, session_dir).await;
             fatal_unwrap__!(
                 session_pool.available_sessions.push(driver_session),
                 "Failed to add session to pool"
@@ -143,15 +150,22 @@ pub fn create_sessions_dirs(session_count: u16) -> Vec<PathBuf> {
     session_folders
 }
 
-static DRIVER_POOL: OnceCell<DriverSessionPool> = OnceCell::const_new();
+static DRIVER_SESSION_POOL: OnceCell<DriverSessionPool> = OnceCell::const_new();
 
-pub async fn driver_session_pool() -> &'static DriverSessionPool {
-    DRIVER_POOL
+pub static mut GET_DRIVER_SESSION_POOL: fn() -> Pin<Box<dyn Future<Output = &'static DriverSessionPool>>> = || {
+    fatal_assert!("Driver not initialized!");
+};
+
+pub(super) async fn _get_driver_session_pool<T>() -> &'static DriverSessionPool
+where
+    T: Capabilities,
+{
+    DRIVER_SESSION_POOL
         .get_or_init(|| async {
             let host = driver_host_from_env();
             let port = driver_port_from_env();
             let count = driver_session_count_from_env();
-            DriverSessionPool::new(host.as_str(), port.as_str(), count).await
+            DriverSessionPool::new::<T>(host.as_str(), port.as_str(), count).await
         })
         .await
 }

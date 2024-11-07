@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use thirtyfour::common::capabilities::firefox::FirefoxPreferences;
 use thirtyfour::{BrowserCapabilitiesHelper, ChromeCapabilities, ChromiumLikeCapabilities, DesiredCapabilities, FirefoxCapabilities};
 
-struct Chrome;
+pub struct Chrome;
 impl Capabilities for Chrome {
     type Capabilities = ChromeCapabilities;
 
@@ -46,7 +46,7 @@ pub fn get_chrome_undetected_args() -> Vec<&'static str> {
     ]
 }
 
-struct Firefox;
+pub struct Firefox;
 impl Capabilities for Firefox {
     type Capabilities = FirefoxCapabilities;
 

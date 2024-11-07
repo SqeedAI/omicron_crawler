@@ -16,19 +16,16 @@ use tokio::fs::DirEntry;
 use tokio::runtime::Runtime;
 use tokio::sync::{futures, oneshot};
 
-pub struct DriverSession<T>
-where
-    T: Capabilities,
-{
+pub struct DriverSession {
     user_dir: PathBuf,
     pub driver: WebDriver,
 }
 
-impl<T> DriverSession<T>
-where
-    T: Capabilities,
-{
-    pub async fn new(host: &str, port: &str, user_dir: PathBuf) -> Self {
+impl DriverSession {
+    pub async fn new<T>(host: &str, port: &str, user_dir: PathBuf) -> Self
+    where
+        T: Capabilities,
+    {
         let caps = T::new(user_dir.to_str().unwrap());
         let driver = fatal_unwrap_e!(
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
