@@ -15,20 +15,17 @@ async fn test_connection() {
     let path = driver_path_from_env();
     let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
-    {
-        let proxy = pool.acquire().unwrap();
-        let driver = proxy.session.as_ref().unwrap();
-        let profile_url =
-            "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
+    let proxy = pool.acquire().unwrap();
+    let driver = proxy.session.as_ref().unwrap();
+    let profile_url =
+        "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
 
-        match driver.driver.goto(profile_url).await {
-            Ok(_) => {}
-            Err(e) => {
-                assert!(false, "Failed to go to webpage {}", e);
-            }
+    match driver.driver.goto(profile_url).await {
+        Ok(_) => {}
+        Err(e) => {
+            assert!(false, "Failed to go to webpage {}", e);
         }
     }
-    pool.quit().await;
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multiple_sessions() {
@@ -54,5 +51,4 @@ async fn test_multiple_sessions() {
     for handle in handles.into_iter() {
         handle.await.unwrap();
     }
-    pool.quit().await;
 }

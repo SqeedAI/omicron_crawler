@@ -7,6 +7,7 @@ use omicron_crawler::driver_pool::driver_session_pool;
 use omicron_crawler::driver_service::driver_service;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::log_level_from_env;
+use std::any::Any;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -17,9 +18,8 @@ async fn main() -> std::io::Result<()> {
     let (host, port) = omicron_crawler::utils::host_data_from_env();
     let result = HttpServer::new(|| App::new().service(hello).service(search).service(profiles))
         .bind((host, port))?
+        .system_exit()
         .run()
         .await;
-
-    driver_session_pool().await.quit().await;
     result
 }

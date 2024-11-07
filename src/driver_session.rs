@@ -57,12 +57,16 @@ impl DriverSession {
     }
     pub async fn quit(&self) -> WebDriverResult<()> {
         let driver = unsafe { std::ptr::read(&self.driver) };
-        let result = driver.quit().await;
-
-        if let Err(e) = fs_extra::dir::remove(self.user_dir.clone()) {
-            error!("Failed to remove tmp user data {}", e);
+        match driver.quit().await {
+            Ok(_) => {
+                info!("Quitting session");
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to quit the WebDriver: {}", e);
+                Err(e)
+            }
         }
-        result
     }
 }
 
