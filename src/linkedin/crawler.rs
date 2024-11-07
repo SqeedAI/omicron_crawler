@@ -1,31 +1,21 @@
-use crate::driver_session::DriverSession;
+use crate::driver_pool::DriverSessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::enums::{Functions, SeniorityLevel};
+use crate::linkedin::enums::Functions;
 use crate::linkedin::parse_sales::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
 use crate::linkedin::profiles::{Profile, SearchResult};
-use std::result;
 use std::time::Duration;
-use thirtyfour::{By, WindowType};
 
-pub struct Crawler {
-    pub driver_ext: DriverSession,
+pub struct Crawler<'a> {
+    pub proxy: DriverSessionProxy<'a>,
 }
 
-impl Crawler {
-    pub async fn new(host: String, port: String) -> Self {
-        let driver_ext = DriverSession::new(host, port).await;
-        Self { driver_ext }
-    }
-    pub async fn load_linkedin(&self) {
-        let driver_ext = &self.driver_ext;
-        fatal_unwrap_e!(
-            driver_ext.driver.goto("https://www.linkedin.com/").await,
-            "Failed to go to linkedin {}"
-        );
+impl<'a> Crawler<'a> {
+    pub async fn new(proxy: DriverSessionProxy<'a>) -> Self {
+        Self { proxy }
     }
     pub async fn set_search_filters(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
-        let driver_ext = &self.driver_ext;
+        let driver_ext = self.proxy.session.as_ref().unwrap();
         match driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await {
             Ok(_) => {}
             Err(e) => return Err(DriverError(format!("Failed to go to linkedin {}", e))),
@@ -38,17 +28,17 @@ impl Crawler {
         Ok(())
     }
     pub async fn test_detection(&self) {
-        let driver_ext = &self.driver_ext;
+        let driver_ext = self.proxy.session.as_ref().unwrap();
         driver_ext.driver.goto("https://demo.fingerprint.com/playground").await.unwrap();
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
     pub async fn parse_search(&self) -> CrawlerResult<Vec<SearchResult>> {
-        let driver_ext = &self.driver_ext;
+        let driver_ext = self.proxy.session.as_ref().unwrap();
         parse_search(driver_ext).await
     }
 
     pub async fn parse_profile(&self, sales_url: &str) -> CrawlerResult<Profile> {
-        let driver_ext = &self.driver_ext;
+        let driver_ext = self.proxy.session.as_ref().unwrap();
         let original_tab = driver_ext.driver.window().await.unwrap();
         let new_window_handle = driver_ext.driver.new_tab().await.unwrap();
         driver_ext.driver.switch_to_window(new_window_handle).await.unwrap();
@@ -56,11 +46,5 @@ impl Crawler {
         driver_ext.driver.close_window().await.unwrap();
         driver_ext.driver.switch_to_window(original_tab).await.unwrap();
         result
-    }
-
-    pub async fn quit(&self) {
-        if let Err(e) = self.driver_ext.quit().await {
-            error!("Failed to quit the WebDriver");
-        }
     }
 }

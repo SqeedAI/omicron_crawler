@@ -466,17 +466,24 @@ pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str
 }
 
 pub async fn parse_education(driver: &DriverSession) -> Option<Vec<Education>> {
-    let education_list = match driver
-        .driver
-        .find_all(By::XPath(
-            "/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/div/section[2]/div/ul/li",
-        ))
+    let education_ul = match driver
+        .find_until_loaded(By::XPath("//h2[normalize-space()='Education']/../ul"), Duration::from_secs(5))
         .await
     {
         Ok(education_list) => education_list,
         Err(_) => {
             return {
                 info!("No education section found.");
+                None
+            }
+        }
+    };
+
+    let education_list = match education_ul.find_all(By::XPath("./li")).await {
+        Ok(education_list) => education_list,
+        Err(_) => {
+            return {
+                info!("No education lists found");
                 None
             }
         }

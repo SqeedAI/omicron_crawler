@@ -41,3 +41,9 @@ pub fn driver_host_from_env() -> String {
 pub fn driver_port_from_env() -> String {
     std::env::var("DRIVER_PORT").unwrap_or_else(|_| "9515".to_string())
 }
+pub fn driver_session_count_from_env() -> u16 {
+    std::env::var("DRIVER_SESSION_COUNT")
+        .unwrap_or_else(|_| "8".to_string())
+        .parse::<u16>()
+        .unwrap()
+}

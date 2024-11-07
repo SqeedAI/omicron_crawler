@@ -2,13 +2,16 @@
 extern crate log;
 
 use log::LevelFilter;
+use omicron_crawler::driver_pool::DriverSessionPool;
 use omicron_crawler::driver_service::{driver_service, DriverService};
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions::Engineering;
 use omicron_crawler::logger::Logger;
-use omicron_crawler::utils::{driver_host_from_env, driver_path_from_env, driver_port_from_env, log_level_from_env};
+use omicron_crawler::utils::{
+    driver_host_from_env, driver_path_from_env, driver_port_from_env, driver_session_count_from_env, log_level_from_env,
+};
 use std::time::Duration;
 
 //TODO
@@ -24,8 +27,11 @@ async fn main() {
     driver_service().await;
     let host = driver_host_from_env();
     let port = driver_port_from_env();
+    let session_count = driver_session_count_from_env();
+    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), session_count).await;
+    let session = pool.acquire().unwrap();
 
-    let crawler = Crawler::new(host, port).await;
+    let crawler = Crawler::new(session).await;
 
     fatal_unwrap_e!(
         crawler

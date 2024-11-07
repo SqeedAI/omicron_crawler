@@ -15,6 +15,15 @@ macro_rules! fatal_unwrap_e {
         })
     };
 }
+
+#[macro_export]
+macro_rules! fatal_unwrap__ {
+    ($e:expr, $str:expr) => {
+        $e.unwrap_or_else(|_| {
+            fatal_assert!($str);
+        })
+    };
+}
 #[macro_export]
 macro_rules! fatal_unwrap {
     ($e:expr, $str:expr) => {
