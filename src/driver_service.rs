@@ -7,12 +7,11 @@ use tokio::sync::{oneshot, OnceCell};
 pub struct DriverService {
     port: String,
     driver_service: Child,
-    chromedriver_path: String,
 }
 
 impl DriverService {
-    pub async fn new(port: String, chromedriver_path: String) -> Self {
-        let path_str = chromedriver_path.as_str();
+    pub async fn new(port: String, chromedriver_path: &str) -> Self {
+        let path_str = chromedriver_path;
         patch_cdc(path_str);
         let mut cmd = Command::new(path_str);
         cmd.arg(format!("--port={}", port));
@@ -48,11 +47,7 @@ impl DriverService {
             },
         }
 
-        Self {
-            port,
-            chromedriver_path,
-            driver_service,
-        }
+        Self { port, driver_service }
     }
 }
 
@@ -97,5 +92,7 @@ static DRIVER_SERVICE: OnceCell<DriverService> = OnceCell::const_new();
 pub async fn driver_service() -> &'static DriverService {
     let port = driver_port_from_env();
     let path = driver_path_from_env();
-    DRIVER_SERVICE.get_or_init(|| async { DriverService::new(port, path).await }).await
+    DRIVER_SERVICE
+        .get_or_init(|| async { DriverService::new(port, path.as_str()).await })
+        .await
 }

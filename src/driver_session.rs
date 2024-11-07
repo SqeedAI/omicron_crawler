@@ -14,14 +14,11 @@ use thirtyfour::{BrowserCapabilitiesHelper, By, ChromiumLikeCapabilities, Desire
 use tokio::fs::DirEntry;
 use tokio::runtime::Runtime;
 use tokio::sync::{futures, oneshot};
-use uuid::Uuid;
 
 pub struct DriverSession {
     user_dir: PathBuf,
-    driver: WebDriver
+    pub driver: WebDriver,
 }
-
-//OPTIMIZE Consider driver pool for multiple requests
 
 impl DriverSession {
     pub async fn new(host: &str, port: &str, user_dir: PathBuf) -> Self {
