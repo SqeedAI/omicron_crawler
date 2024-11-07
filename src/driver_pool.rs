@@ -47,7 +47,7 @@ impl DriverSessionPool {
         let session_dirs = create_sessions_dirs(session_count);
         let zipped_iter = session_dirs.into_iter().zip(0..session_count);
 
-        for (session_dir, i) in zipped_iter.into_iter() {
+        for (session_dir, _) in zipped_iter.into_iter() {
             let driver_session = DriverSession::new(host, port, session_dir).await;
             fatal_unwrap__!(
                 session_pool.available_sessions.push(driver_session),
