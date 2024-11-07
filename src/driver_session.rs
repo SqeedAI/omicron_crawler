@@ -72,8 +72,8 @@ pub fn get_undetected_chromedriver_args() -> Vec<&'static str> {
         "--disable-backgrounding-occluded-windows",
         "--disable-logging",
         "--no-sandbox",
-        "--headless",    // Add headless mode
-        "--disable-gpu", // Recommended for headless
+        "--headless=new", // Add headless mode
+        "--disable-gpu",  // Recommended for headless
         "--disable-blink-features=AutomationControlled",
         "--disable-infobars",
         "--disable-notifications",

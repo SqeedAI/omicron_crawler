@@ -12,7 +12,7 @@ async fn test_parse_1() {
     let port = driver_port_from_env();
     let path = driver_path_from_env();
     let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 2).await;
+    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     {
         let proxy = pool.acquire().unwrap();
         let crawler = Crawler::new(proxy).await;
@@ -80,7 +80,7 @@ async fn test_parse_2() {
     let port = driver_port_from_env();
     let path = driver_path_from_env();
     let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 2).await;
+    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     {
         let proxy = pool.acquire().unwrap();
         let crawler = Crawler::new(proxy).await;
@@ -154,7 +154,7 @@ async fn test_parse_3() {
     let port = driver_port_from_env();
     let path = driver_path_from_env();
     let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 2).await;
+    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     {
         let proxy = pool.acquire().unwrap();
         let crawler = Crawler::new(proxy).await;
