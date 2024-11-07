@@ -30,8 +30,12 @@ pub fn host_data_from_env() -> (String, u16) {
     (host, port)
 }
 
-pub fn driver_path_from_env() -> String {
-    std::env::var("DRIVER_PATH").unwrap_or_else(|_| "./drivers/chromedriver.exe".to_string())
+pub fn chrome_driver_path_from_env() -> String {
+    std::env::var("CHROME_DRIVER_PATH").unwrap_or_else(|_| "./drivers/chromedriver.exe".to_string())
+}
+
+pub fn gecko_driver_path_from_env() -> String {
+    std::env::var("GECKO_DRIVER_PATH").unwrap_or_else(|_| "./drivers/geckodriver.exe".to_string())
 }
 
 pub fn driver_host_from_env() -> String {

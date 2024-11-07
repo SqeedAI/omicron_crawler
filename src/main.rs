@@ -2,15 +2,15 @@
 extern crate log;
 
 use log::LevelFilter;
-use omicron_crawler::driver_pool::DriverSessionPool;
-use omicron_crawler::driver_service::{driver_service, DriverService};
+use omicron_crawler::driver::driver_pool::DriverSessionPool;
+use omicron_crawler::driver::driver_service::chrome_driver_service;
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions::Engineering;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::{
-    driver_host_from_env, driver_path_from_env, driver_port_from_env, driver_session_count_from_env, log_level_from_env,
+    chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, driver_session_count_from_env, log_level_from_env,
 };
 use std::time::Duration;
 
@@ -24,7 +24,7 @@ async fn main() {
     if let Err(e) = dotenvy::from_filename(".env") {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
-    driver_service().await;
+    chrome_driver_service().await;
     let host = driver_host_from_env();
     let port = driver_port_from_env();
     let session_count = driver_session_count_from_env();

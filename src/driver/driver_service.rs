@@ -1,15 +1,18 @@
-use crate::utils::{driver_host_from_env, driver_path_from_env, driver_port_from_env, generate_random_string};
+use crate::utils::{
+    chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, gecko_driver_path_from_env, generate_random_string,
+};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
+use std::sync::{Condvar, Mutex};
 use std::{fs, mem};
 use tokio::sync::{oneshot, OnceCell};
 
-pub struct DriverService {
+pub struct ChromeDriverService {
     port: String,
     driver_service: Child,
 }
 
-impl DriverService {
+impl ChromeDriverService {
     pub async fn new(port: String, chromedriver_path: &str) -> Self {
         let path_str = chromedriver_path;
         patch_cdc(path_str);
@@ -31,7 +34,7 @@ impl DriverService {
             fatal_unwrap_e!(reader.read_line(&mut out_str), "Failed to read line {}");
 
             loop {
-                println!("{}", out_str);
+                println!("[CHROME-DRIVER] {}", out_str);
                 if out_str.contains(&expected_output) {
                     fatal_unwrap_e!(tx.send(()), "Failed to notify on success! {:?}");
                     break;
@@ -80,19 +83,71 @@ pub fn patch_cdc(chromedriver_path: &str) {
     fs::write(chromedriver_path, driver_binary).unwrap();
 }
 
-impl Drop for DriverService {
+impl Drop for ChromeDriverService {
     fn drop(&mut self) {
         info!("Killing driver service");
         self.driver_service.kill().unwrap();
     }
 }
 
-static DRIVER_SERVICE: OnceCell<DriverService> = OnceCell::const_new();
+static CHROME_DRIVER_SERVICE: OnceCell<ChromeDriverService> = OnceCell::const_new();
 
-pub async fn driver_service() -> &'static DriverService {
+pub async fn chrome_driver_service() -> &'static ChromeDriverService {
     let port = driver_port_from_env();
-    let path = driver_path_from_env();
-    DRIVER_SERVICE
-        .get_or_init(|| async { DriverService::new(port, path.as_str()).await })
+    let path = chrome_driver_path_from_env();
+    CHROME_DRIVER_SERVICE
+        .get_or_init(|| async { ChromeDriverService::new(port, path.as_str()).await })
+        .await
+}
+
+pub struct GeckoDriverService {
+    port: String,
+    driver_service: Child,
+}
+
+impl GeckoDriverService {
+    pub async fn new(port: String, geckodriver_path: &str) -> Self {
+        let path_str = geckodriver_path;
+        let mut cmd = Command::new(path_str);
+        let mut gecko_driver = cmd.arg(format!("--port {}", port)).stdout(Stdio::piped()).spawn().unwrap();
+        let stdout = gecko_driver.stdout.take().unwrap();
+        let signal = Condvar::new();
+        let signal_lock = Mutex::new(false);
+
+        tokio::spawn(async move {
+            let mut buff_reader = BufReader::new(stdout);
+            let mut out_str = String::new();
+            loop {
+                let line = buff_reader.read_line(&mut out_str).await.unwrap();
+                if line.contains("Listening on") {
+                    let mut guard = signal_lock.lock().unwrap();
+                    guard = true;
+                    signal.notify_all();
+                    break;
+                }
+                println!("{}", line);
+            }
+            // No point to have an if in a loop
+            loop {
+                let line = buff_reader.read_line(&mut out_str).await.unwrap();
+                println!("{}", line);
+            }
+        });
+
+        let _guard = signal_lock.lock().unwrap();
+        signal.wait_while(signal_lock, |val| *val).await;
+        Self {
+            port,
+            driver_service: gecko_driver,
+        }
+    }
+}
+
+static GECKO_DRIVER_SERVICE: OnceCell<GeckoDriverService> = OnceCell::const_new();
+pub async fn gecko_driver_service() -> &'static GeckoDriverService {
+    let port = driver_port_from_env();
+    let path = gecko_driver_path_from_env();
+    GECKO_DRIVER_SERVICE
+        .get_or_init(|| async { GeckoDriverService::new(port, path.as_str()).await })
         .await
 }

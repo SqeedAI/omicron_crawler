@@ -1,4 +1,4 @@
-use crate::driver_session::DriverSession;
+use crate::driver::driver_session::DriverSession;
 use crate::utils::{driver_host_from_env, driver_port_from_env, driver_session_count_from_env};
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
@@ -91,10 +91,10 @@ impl DriverSessionPool {
 
 pub fn create_sessions_dirs(session_count: u16) -> Vec<PathBuf> {
     let mut work_dir = current_dir().unwrap();
-    work_dir.push("user_data");
+    work_dir.push("../../user_data");
     let user_dir = work_dir.clone();
     let mut session_dir = current_dir().unwrap();
-    session_dir.push("sessions");
+    session_dir.push("../../sessions");
     if !session_dir.exists() {
         fatal_unwrap_e!(fs::create_dir_all(session_dir.clone()), "Failed to create user directory {}");
     }

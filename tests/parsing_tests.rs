@@ -1,8 +1,10 @@
+use omicron_crawler::driver::driver_pool::DriverSessionPool;
+use omicron_crawler::driver::driver_service::ChromeDriverService;
 use omicron_crawler::driver_pool::DriverSessionPool;
-use omicron_crawler::driver_service::DriverService;
+use omicron_crawler::driver_service::ChromeDriverService;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
-use omicron_crawler::utils::{driver_host_from_env, driver_path_from_env, driver_port_from_env};
+use omicron_crawler::utils::{chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env};
 use std::sync::Arc;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -10,8 +12,8 @@ async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
     let host = driver_host_from_env();
     let port = driver_port_from_env();
-    let path = driver_path_from_env();
-    let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
+    let path = chrome_driver_path_from_env();
+    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     {
         let proxy = pool.acquire().unwrap();
@@ -78,8 +80,8 @@ async fn test_parse_2() {
     Logger::init(log::LevelFilter::Trace);
     let host = driver_host_from_env();
     let port = driver_port_from_env();
-    let path = driver_path_from_env();
-    let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
+    let path = chrome_driver_path_from_env();
+    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
@@ -149,8 +151,8 @@ async fn test_parse_3() {
     Logger::init(log::LevelFilter::Trace);
     let host = driver_host_from_env();
     let port = driver_port_from_env();
-    let path = driver_path_from_env();
-    let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
+    let path = chrome_driver_path_from_env();
+    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
@@ -212,8 +214,8 @@ async fn test_parse_4() {
     Logger::init(log::LevelFilter::Info);
     let host = driver_host_from_env();
     let port = driver_port_from_env();
-    let path = driver_path_from_env();
-    let _driver_service = DriverService::new(port.clone(), path.as_str()).await;
+    let path = chrome_driver_path_from_env();
+    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
     let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 2).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
