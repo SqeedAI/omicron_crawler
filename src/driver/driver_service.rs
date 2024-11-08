@@ -109,34 +109,41 @@ impl GeckoDriverService {
     pub async fn new(port: String, geckodriver_path: &str) -> Self {
         let path_str = geckodriver_path;
         let mut cmd = Command::new(path_str);
-        let mut gecko_driver = cmd.arg(format!("--port {}", port)).stdout(Stdio::piped()).spawn().unwrap();
+        let mut gecko_driver = cmd.arg("--port").arg(port.clone()).stdout(Stdio::piped()).spawn().unwrap();
         let stdout = gecko_driver.stdout.take().unwrap();
         let signal = Arc::new(Condvar::new());
-        let signal_lock = Arc::new(Mutex::new(false));
+        let signal_lock = Arc::new(Mutex::new(true));
         let tokio_signal = signal.clone();
         let tokio_signal_lock = signal_lock.clone();
         tokio::spawn(async move {
             let mut buff_reader = BufReader::new(stdout);
             let mut out_str = String::new();
             loop {
+                out_str.clear();
                 let _ = buff_reader.read_line(&mut out_str);
                 if out_str.contains("Listening on") {
+                    println!("[GECKO-DRIVER] {}", out_str);
                     let mut guard = tokio_signal_lock.lock().unwrap();
-                    *guard = true;
+                    *guard = false;
                     tokio_signal.notify_all();
                     break;
                 }
-                println!("{}", out_str);
             }
             // No point to have an if in a loop
             loop {
-                let _ = buff_reader.read_line(&mut out_str);
-                println!("{}", out_str);
+                out_str.clear();
+                if let Ok(len) = buff_reader.read_line(&mut out_str) {
+                    if len == 0 {
+                        continue;
+                    }
+                    println!("[GECKO-DRIVER]{}", out_str);
+                }
             }
         });
 
         let guard = signal_lock.lock().unwrap();
         fatal_unwrap_e!(signal.wait_while(guard, |val| *val), "Failed to wait for geckodriver service: {}");
+        info!("Geckodriver started successfully on port {}", port);
         Self {
             port,
             driver_service: gecko_driver,

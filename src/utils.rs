@@ -24,6 +24,8 @@ pub fn log_level_from_env() -> log::LevelFilter {
     }
 }
 
+//REFACTOR Env should return based on browser type
+
 pub fn host_data_from_env() -> (String, u16) {
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
@@ -55,4 +57,11 @@ pub fn driver_session_count_from_env() -> u16 {
 // The struct shall contain correct types, not strings. Browser type should be an enum.
 pub fn browser_from_env() -> String {
     std::env::var("BROWSER").unwrap_or_else(|_| "firefox".to_string())
+}
+pub fn firefox_profile_path_from_env() -> String {
+    std::env::var("FIREFOX_PROFILE_PATH").unwrap_or_else(|_| "./profile/".to_string())
+}
+
+pub fn chrome_profile_path_from_env() -> String {
+    std::env::var("CHOMRE_PROFILE_PATH").unwrap_or_else(|_| "./user_data/".to_string())
 }

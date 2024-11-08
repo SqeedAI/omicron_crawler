@@ -1,5 +1,5 @@
 use crate::driver::driver_session::DriverSession;
-use crate::driver::traits::Capabilities;
+use crate::driver::traits::BrowserConfig;
 use crate::utils::{driver_host_from_env, driver_port_from_env, driver_session_count_from_env};
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
@@ -43,7 +43,7 @@ pub struct DriverSessionPool {
 impl DriverSessionPool {
     pub async fn new<T>(host: &str, port: &str, session_count: u16) -> Self
     where
-        T: Capabilities,
+        T: BrowserConfig,
     {
         let session_pool = DriverSessionPool {
             sessions_available_signal: Condvar::new(),
@@ -51,15 +51,18 @@ impl DriverSessionPool {
             available_sessions: ArrayQueue::new(session_count as usize),
         };
 
-        let session_dirs = create_sessions_dirs(session_count);
+        let session_dirs = T::create_session_dirs(session_count);
         let zipped_iter = session_dirs.into_iter().zip(0..session_count);
 
         for (session_dir, _) in zipped_iter.into_iter() {
-            let driver_session = DriverSession::new::<T>(host, port, session_dir).await;
+            let dir_path = session_dir.as_str();
+            trace!("Creating session");
+            let driver_session = DriverSession::new::<T>(host, port, dir_path).await;
             fatal_unwrap__!(
                 session_pool.available_sessions.push(driver_session),
                 "Failed to add session to pool"
             );
+            trace!("Added session to pool");
         }
         session_pool
     }
@@ -91,74 +94,20 @@ impl DriverSessionPool {
     pub async fn quit(&self) {
         self.wait_for_all_sessions_to_be_released().await;
         while let Some(session) = self.available_sessions.pop() {
-            fatal_unwrap_e!(session.quit().await, "Failed to quit the WebDriver: {}");
+            match session.quit().await {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!("Failed to quit the WebDriver: {}", e);
+                }
+            }
         }
     }
-}
-
-pub fn create_sessions_dirs(session_count: u16) -> Vec<PathBuf> {
-    let mut work_dir = current_dir().unwrap();
-    work_dir.push("../../user_data");
-    let user_dir = work_dir.clone();
-    let mut session_dir = current_dir().unwrap();
-    session_dir.push("../../sessions");
-    if !session_dir.exists() {
-        fatal_unwrap_e!(fs::create_dir_all(session_dir.clone()), "Failed to create user directory {}");
-    }
-
-    let mut session_folders = Vec::with_capacity(session_count as usize);
-    let existing_session_folders = fatal_unwrap_e!(fs::read_dir(session_dir.clone()), "Failed to read user directory {}");
-    let mut folder_count: u16 = 0;
-    for dir in existing_session_folders.filter_map(Result::ok) {
-        folder_count += 1;
-        session_folders.push(dir.path());
-    }
-    if folder_count >= session_count {
-        info!("Found enough session folders to reuse.");
-        return session_folders;
-    }
-
-    // OPTIMIZE use async as this is an IO bound operation
-    let result = thread::scope(|s| {
-        let mut join_handles = Vec::with_capacity(folder_count as usize);
-        for i in folder_count..session_count {
-            let mut target_dir = session_dir.clone();
-            let user_dir_ref = &user_dir;
-            join_handles.push(s.spawn(move |_| {
-                target_dir.push(i.to_string());
-                let copy_options = CopyOptions {
-                    copy_inside: true,
-                    ..Default::default()
-                };
-                info!(
-                    "Copying user directory {} to {}",
-                    user_dir_ref.to_str().unwrap(),
-                    target_dir.to_str().unwrap()
-                );
-                fatal_unwrap_e!(
-                    fs_extra::dir::copy(user_dir_ref.clone(), target_dir.clone(), &copy_options),
-                    "Failed to copy user directory {}"
-                );
-                return target_dir;
-            }));
-        }
-        for handle in join_handles {
-            session_folders.push(handle.join().unwrap());
-        }
-    });
-    fatal_unwrap__!(result, "Failed to create session folders");
-    session_folders
 }
 
 static DRIVER_SESSION_POOL: OnceCell<DriverSessionPool> = OnceCell::const_new();
-
-pub static mut GET_DRIVER_SESSION_POOL: fn() -> Pin<Box<dyn Future<Output = &'static DriverSessionPool>>> = || {
-    fatal_assert!("Driver not initialized!");
-};
-
-pub(super) async fn _get_driver_session_pool<T>() -> &'static DriverSessionPool
+pub(super) async fn create_driver_session_pool<T>() -> &'static DriverSessionPool
 where
-    T: Capabilities,
+    T: BrowserConfig,
 {
     DRIVER_SESSION_POOL
         .get_or_init(|| async {
@@ -168,4 +117,7 @@ where
             DriverSessionPool::new::<T>(host.as_str(), port.as_str(), count).await
         })
         .await
+}
+pub fn get_driver_session_pool() -> &'static DriverSessionPool {
+    fatal_unwrap!(DRIVER_SESSION_POOL.get(), "Driver session pool not initialized!")
 }

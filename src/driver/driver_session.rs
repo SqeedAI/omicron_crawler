@@ -1,4 +1,4 @@
-use crate::driver::traits::Capabilities;
+use crate::driver::traits::BrowserConfig;
 use crate::linkedin::crawler::Crawler;
 use crate::utils::generate_random_string;
 use fs_extra::dir::CopyOptions;
@@ -17,21 +17,20 @@ use tokio::runtime::Runtime;
 use tokio::sync::{futures, oneshot};
 
 pub struct DriverSession {
-    user_dir: PathBuf,
     pub driver: WebDriver,
 }
 
 impl DriverSession {
-    pub async fn new<T>(host: &str, port: &str, user_dir: PathBuf) -> Self
+    pub async fn new<T>(host: &str, port: &str, user_dir: &str) -> Self
     where
-        T: Capabilities,
+        T: BrowserConfig,
     {
-        let caps = T::new(user_dir.to_str().unwrap());
+        let caps = T::new(user_dir);
         let driver = fatal_unwrap_e!(
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
             "Failed to create session: {}"
         );
-        Self { driver, user_dir }
+        Self { driver }
     }
     pub async fn find_until_loaded(&self, by: By, timeout: Duration) -> WebDriverResult<WebElement> {
         let driver = &self.driver;
