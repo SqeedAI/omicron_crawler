@@ -30,19 +30,17 @@ async fn main() {
         let session = pool.acquire().unwrap();
         info!("Acquired session, starting crawler...");
         let crawler = Crawler::new(session).await;
-        crawler.test_detection().await;
 
-        //
-        // fatal_unwrap_e!(
-        //     crawler
-        //         .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
-        //         .await,
-        //     "{}"
-        // );
-        // let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
-        // let first = results.first().unwrap();
-        // let profile = crawler.parse_profile(&first.sales_url).await;
-        // println!("{}", fatal_unwrap_e!(profile, "{}"));
+        fatal_unwrap_e!(
+            crawler
+                .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
+                .await,
+            "{}"
+        );
+        let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
+        let first = results.first().unwrap();
+        let profile = crawler.parse_profile(&first.sales_url).await;
+        println!("{}", fatal_unwrap_e!(profile, "{}"));
     }
     pool.quit().await;
 }

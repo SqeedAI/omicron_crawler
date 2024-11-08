@@ -65,3 +65,7 @@ pub fn firefox_profile_path_from_env() -> String {
 pub fn chrome_profile_path_from_env() -> String {
     std::env::var("CHOMRE_PROFILE_PATH").unwrap_or_else(|_| "./user_data/".to_string())
 }
+
+pub fn firefox_binary_path_from_env() -> String {
+    std::env::var("FIREFOX_BINARY_PATH").unwrap_or_else(|_| "C:\\Program Files\\Mozilla Firefox\\firefox.exe".to_string())
+}

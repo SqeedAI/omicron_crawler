@@ -1,5 +1,6 @@
+use crate::driver::driver_service::patch_binary_with_random;
 use crate::driver::traits::BrowserConfig;
-use crate::utils::{chrome_profile_path_from_env, firefox_profile_path_from_env};
+use crate::utils::{chrome_profile_path_from_env, firefox_binary_path_from_env, firefox_profile_path_from_env};
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
 use std::fmt::format;
@@ -115,38 +116,10 @@ impl BrowserConfig for Firefox {
 
         fatal_unwrap_e!(caps.set_encoded_profile(user_dir_path), "Failed to set profile {}");
         let mut prefs = FirefoxPreferences::new();
-        fatal_unwrap_e!(
-            caps.set_firefox_binary("C:\\Program Files\\Mozilla Firefox\\firefox.exe"),
-            "Failed to set firefox binary {}"
-        );
+        let firefox_binary = firefox_binary_path_from_env();
+
+        fatal_unwrap_e!(caps.set_firefox_binary(firefox_binary.as_str()), "Failed to set firefox binary {}");
         // fatal_unwrap_e!(caps.set_headless(), "Failed to set headless {}");
-
-        // Hide WebDriver
-        prefs.set("dom.webdriver.enabled", false)?;
-        prefs.set("webdriver_enable_native_events", false)?;
-        prefs.set("webdriver.load.strategy", "unstable")?;
-
-        // Hardware/Platform consistency
-        prefs.set("webgl.disabled", false)?;
-        prefs.set("canvas.capturestream.enabled", true)?;
-        prefs.set("media.navigator.enabled", true)?;
-        prefs.set("media.hardware-video-decoding.enabled", true)?;
-        prefs.set("dom.webgl.enabled", true)?;
-        prefs.set("layout.css.font-visibility.level", 1)?; // For consistent font fingerprinting
-
-        // Audio settings
-        prefs.set("media.webaudio.enabled", true)?;
-        prefs.set("javascript.options.wasm", true)?;
-
-        // Timezone/Location
-        prefs.set("privacy.resistFingerprinting", false)?; // Can interfere with fingerprint consistency
-        prefs.set("intl.accept_languages", "en-US, en")?;
-        prefs.set("general.useragent.locale", "en-US")?;
-
-        // Additional stealth
-        prefs.set("network.http.referer.spoofSource", false)?;
-        prefs.set("security.ssl.disable_session_identifiers", false)?;
-        prefs.set("privacy.trackingprotection.enabled", false)?;
 
         fatal_unwrap_e!(
             prefs.set("privacy.trackingprotection.enabled", false),
@@ -182,11 +155,16 @@ impl BrowserConfig for Firefox {
         caps
     }
 
-    // OPTIMIZE Think about how to not return a vec, but rather, maybe let the config obtain a free folder instead (Be abstract)
+    // OPTIMIZE Think about how to not return a vec, but rather, let the config obtain a free folder instead (Be abstract)
     fn create_session_dirs(session_count: u16) -> Vec<String> {
         let mut paths = Vec::with_capacity(session_count as usize);
         let current_dir = current_dir().unwrap();
-        let b64_file_path = current_dir.join("sessions\\encoded.b64");
+        let mut b64_file_path = current_dir.clone();
+        b64_file_path.push("sessions");
+        if !b64_file_path.exists() {
+            fatal_unwrap_e!(fs::create_dir(b64_file_path.clone()), "Failed to create sessions dir {}");
+        }
+        b64_file_path.push("encoded.b64");
         let encoded;
         if !b64_file_path.exists() {
             let target_file = current_dir.join(firefox_profile_path_from_env());

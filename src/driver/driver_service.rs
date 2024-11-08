@@ -1,7 +1,9 @@
 use crate::utils::{
-    chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, gecko_driver_path_from_env, generate_random_string,
+    chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, firefox_binary_path_from_env, gecko_driver_path_from_env,
+    generate_random_string,
 };
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Condvar, Mutex};
 use std::{fs, mem};
@@ -15,7 +17,7 @@ pub struct ChromeDriverService {
 impl ChromeDriverService {
     pub async fn new(port: String, chromedriver_path: &str) -> Self {
         let path_str = chromedriver_path;
-        patch_cdc(path_str);
+        patch_binary_with_random(path_str, b"cdc_", 22);
         let mut cmd = Command::new(path_str);
         cmd.arg(format!("--port={}", port));
         cmd.stdout(Stdio::piped());
@@ -54,33 +56,32 @@ impl ChromeDriverService {
     }
 }
 
-pub fn patch_cdc(chromedriver_path: &str) {
-    const CDC_SIZE: usize = 22;
-    let mut driver_binary = fatal_unwrap_e!(fs::read(chromedriver_path), "Failed to read chromedriver binary {}");
-    let pattern = b"cdc_";
-    let new_cdc = generate_random_string(CDC_SIZE);
+pub fn patch_binary_with_random(binary_path: &str, pattern: &[u8], random_string_size: usize) {
+    let mut binary = fatal_unwrap_e!(fs::read(binary_path), "Failed to read target binary for patching {}");
+    let pattern = pattern;
+    let new_string = generate_random_string(random_string_size);
     // TODO use strings instead of bytes
     let mut matches = Vec::with_capacity(3);
-    for (index, window) in driver_binary.windows(pattern.len()).enumerate() {
+    for (index, window) in binary.windows(pattern.len()).enumerate() {
         if window == pattern {
             matches.push(index);
         }
     }
     if matches.len() == 0 {
-        info!("no cdc matches found, no need to patch!");
+        info!("no pater matches found, no need to patch!");
         return;
     }
 
-    let first_match = unsafe { String::from_raw_parts(driver_binary.as_mut_ptr().add(matches[0]), CDC_SIZE, CDC_SIZE) };
-    info!("Replacing {} with {}", first_match, new_cdc);
+    let first_match = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(matches[0]), random_string_size, random_string_size) };
+    info!("Replacing {} with {}", first_match, new_string);
     mem::forget(first_match);
 
     for index in matches {
-        let mut cdc_str = unsafe { String::from_raw_parts(driver_binary.as_mut_ptr().add(index), CDC_SIZE, CDC_SIZE) };
-        cdc_str.replace_range(0..CDC_SIZE, &new_cdc);
-        mem::forget(cdc_str);
+        let mut pattern_str = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(index), random_string_size, random_string_size) };
+        pattern_str.replace_range(0..random_string_size, &new_string);
+        mem::forget(pattern_str);
     }
-    fs::write(chromedriver_path, driver_binary).unwrap();
+    fs::write(binary_path, binary).unwrap();
 }
 
 impl Drop for ChromeDriverService {
@@ -108,6 +109,13 @@ pub struct GeckoDriverService {
 impl GeckoDriverService {
     pub async fn new(port: String, geckodriver_path: &str) -> Self {
         let path_str = geckodriver_path;
+        let firefox_binary_path = firefox_binary_path_from_env();
+        let mut xul_path_buf = PathBuf::from(firefox_binary_path);
+        xul_path_buf.pop();
+        xul_path_buf.push("xul.dll");
+        let xul_path = xul_path_buf.to_str().unwrap();
+        patch_binary_with_random(xul_path, b"webdriver", 9);
+
         let mut cmd = Command::new(path_str);
         let mut gecko_driver = cmd.arg("--port").arg(port.clone()).stdout(Stdio::piped()).spawn().unwrap();
         let stdout = gecko_driver.stdout.take().unwrap();

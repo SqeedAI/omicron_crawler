@@ -30,6 +30,24 @@ impl DriverSession {
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
             "Failed to create session: {}"
         );
+        fatal_unwrap_e!(
+            driver
+                .execute(
+                    r#"
+            // Add script to be executed on new document
+            const script = document.createElement('script');
+            script.textContent = `
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            `;
+            document.documentElement.prepend(script);
+            "#,
+                    Vec::new(),
+                )
+                .await,
+            "Failed to inject JS to set webdriver property! {}"
+        );
         Self { driver }
     }
     pub async fn find_until_loaded(&self, by: By, timeout: Duration) -> WebDriverResult<WebElement> {
@@ -45,6 +63,9 @@ impl DriverSession {
         }
 
         Err(WebDriverError::Timeout("element not found. Timed out!".to_string()))
+    }
+    pub async fn goto(&self, url: &str) -> WebDriverResult<()> {
+        self.driver.goto(url).await
     }
     pub async fn quit(&self) -> WebDriverResult<()> {
         let driver = unsafe { std::ptr::read(&self.driver) };
