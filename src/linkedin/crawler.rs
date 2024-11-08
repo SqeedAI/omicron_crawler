@@ -29,7 +29,7 @@ impl<'a> Crawler<'a> {
     }
     pub async fn test_detection(&self) {
         let driver_ext = self.proxy.session.as_ref().unwrap();
-        driver_ext.goto("https://demo.fingerprint.com/playground").await.unwrap();
+        driver_ext.driver.goto("https://demo.fingerprint.com/playground").await.unwrap();
         tokio::time::sleep(Duration::from_secs(100)).await;
     }
     pub async fn parse_search(&self) -> CrawlerResult<Vec<SearchResult>> {

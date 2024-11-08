@@ -45,6 +45,15 @@ impl BrowserConfig for Chrome {
         let existing_session_folders = fatal_unwrap_e!(fs::read_dir(session_dir.clone()), "Failed to read user directory {}");
         let mut folder_count: u16 = 0;
         for dir in existing_session_folders.filter_map(Result::ok) {
+            let file_type = match dir.file_type() {
+                Ok(file_type) => file_type,
+                Err(_) => {
+                    fatal_assert!("Failed to get file type")
+                }
+            };
+            if file_type.is_file() {
+                continue;
+            }
             folder_count += 1;
             session_folders.push(dir.path().to_str().unwrap().to_string());
         }
