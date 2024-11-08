@@ -1,4 +1,4 @@
-use omicron_crawler::driver::driver_pool::{DriverSessionPool, GET_DRIVER_SESSION_POOL};
+use omicron_crawler::driver::driver_pool::{DriverSessionManager, GET_DRIVER_SESSION_POOL};
 use omicron_crawler::driver::driver_service::ChromeDriverService;
 use omicron_crawler::driver::init_chrome;
 use omicron_crawler::linkedin::crawler::Crawler;
@@ -16,7 +16,7 @@ async fn test_connection() {
     init_chrome().await;
     let pool = GET_DRIVER_SESSION_POOL().await;
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
+    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();
     let driver = proxy.session.as_ref().unwrap();
     let profile_url =
@@ -36,7 +36,7 @@ async fn test_multiple_sessions() {
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = Arc::new(DriverSessionPool::new(host.as_str(), port.as_str(), 2).await);
+    let pool = Arc::new(DriverSessionManager::new(host.as_str(), port.as_str(), 2).await);
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
 

@@ -1,6 +1,6 @@
 use crate::driver::driver_session::DriverSession;
-use crate::driver::traits::BrowserConfig;
-use crate::utils::{driver_host_from_env, driver_port_from_env, driver_session_count_from_env};
+use crate::driver::traits::{BrowserConfig, DriverService};
+use crate::env::get_env;
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
 use fs_extra::dir::CopyOptions;
@@ -15,12 +15,12 @@ use thirtyfour::{ChromeCapabilities, FirefoxCapabilities};
 use tokio::sync::OnceCell;
 
 pub struct DriverSessionProxy<'a> {
-    driver_session_pool: &'a DriverSessionPool,
+    driver_session_pool: &'a DriverSessionManager,
     pub session: Option<DriverSession>,
 }
 
 impl<'a> DriverSessionProxy<'a> {
-    pub fn new(session: DriverSession, driver_session_pool: &'a DriverSessionPool) -> Self {
+    pub fn new(session: DriverSession, driver_session_pool: &'a DriverSessionManager) -> Self {
         Self {
             session: Some(session),
             driver_session_pool,
@@ -34,36 +34,45 @@ impl<'a> Drop for DriverSessionProxy<'a> {
     }
 }
 
-pub struct DriverSessionPool {
+pub struct DriverSessionManager<ServiceType>
+where
+    ServiceType: DriverService,
+{
     sessions_available_signal: Condvar,
     sessions_available_signal_lock: Mutex<()>,
+    driver_service: ServiceType,
     available_sessions: ArrayQueue<DriverSession>,
 }
 
-impl DriverSessionPool {
-    pub async fn new<T>(host: &str, port: &str, session_count: u16) -> Self
-    where
-        T: BrowserConfig,
-    {
-        let session_pool = DriverSessionPool {
-            sessions_available_signal: Condvar::new(),
-            sessions_available_signal_lock: Mutex::new(()),
-            available_sessions: ArrayQueue::new(session_count as usize),
-        };
-
-        let session_dirs = T::create_session_dirs(session_count);
-        let zipped_iter = session_dirs.into_iter().zip(0..session_count);
+impl<ServiceType> DriverSessionManager<ServiceType>
+where
+    ServiceType: DriverService,
+{
+    pub async fn new(host: &str, port: &str, session_count: u16) -> Self {
+        let service = ServiceType::new(
+            port.to_string(),
+            session_count,
+            get_env().driver_path.as_str(),
+            get_env().profile_path.as_str(),
+        )
+        .await;
 
         for (session_dir, _) in zipped_iter.into_iter() {
             let dir_path = session_dir.as_str();
             trace!("Creating session");
-            let driver_session = DriverSession::new::<T>(host, port, dir_path).await;
+            let driver_session = DriverSession::new::<BrowserType>(host, port, dir_path).await;
             fatal_unwrap__!(
                 session_pool.available_sessions.push(driver_session),
                 "Failed to add session to pool"
             );
             trace!("Added session to pool");
         }
+
+        let session_pool = DriverSessionManager {
+            sessions_available_signal: Condvar::new(),
+            sessions_available_signal_lock: Mutex::new(()),
+            available_sessions: ArrayQueue::new(session_count as usize),
+        };
         session_pool
     }
     pub fn acquire(&self) -> Option<DriverSessionProxy> {
@@ -102,22 +111,4 @@ impl DriverSessionPool {
             }
         }
     }
-}
-
-static DRIVER_SESSION_POOL: OnceCell<DriverSessionPool> = OnceCell::const_new();
-pub(super) async fn create_driver_session_pool<T>() -> &'static DriverSessionPool
-where
-    T: BrowserConfig,
-{
-    DRIVER_SESSION_POOL
-        .get_or_init(|| async {
-            let host = driver_host_from_env();
-            let port = driver_port_from_env();
-            let count = driver_session_count_from_env();
-            DriverSessionPool::new::<T>(host.as_str(), port.as_str(), count).await
-        })
-        .await
-}
-pub fn get_driver_session_pool() -> &'static DriverSessionPool {
-    fatal_unwrap!(DRIVER_SESSION_POOL.get(), "Driver session pool not initialized!")
 }

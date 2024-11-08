@@ -1,4 +1,4 @@
-use omicron_crawler::driver::driver_pool::DriverSessionPool;
+use omicron_crawler::driver::driver_pool::DriverSessionManager;
 use omicron_crawler::driver::driver_service::ChromeDriverService;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
@@ -12,7 +12,7 @@ async fn test_parse_1() {
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
+    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
     {
         let proxy = pool.acquire().unwrap();
         let crawler = Crawler::new(proxy).await;
@@ -80,7 +80,7 @@ async fn test_parse_2() {
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
+    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url =
@@ -151,7 +151,7 @@ async fn test_parse_3() {
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 1).await;
+    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
@@ -214,7 +214,7 @@ async fn test_parse_4() {
     let port = driver_port_from_env();
     let path = chrome_driver_path_from_env();
     let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionPool::new(host.as_str(), port.as_str(), 2).await;
+    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 2).await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";

@@ -2,7 +2,7 @@
 extern crate log;
 
 use log::LevelFilter;
-use omicron_crawler::driver::driver_pool::{get_driver_session_pool, DriverSessionPool};
+use omicron_crawler::driver::driver_pool::{get_driver_session_pool, DriverSessionManager};
 use omicron_crawler::driver::driver_service::{chrome_driver_service, gecko_driver_service};
 use omicron_crawler::driver::init;
 use omicron_crawler::fatal_assert;
@@ -11,7 +11,8 @@ use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions::Engineering;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::utils::{
-    chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, driver_session_count_from_env, log_level_from_env,
+    browser_from_env, chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, driver_session_count_from_env,
+    log_level_from_env,
 };
 use std::time::Duration;
 
@@ -25,7 +26,8 @@ async fn main() {
     if let Err(e) = dotenvy::from_filename(".env") {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
-    let pool = init().await;
+    let browser = browser_from_env();
+    let pool = init(browser.as_str()).await;
     {
         let session = pool.acquire().unwrap();
         info!("Acquired session, starting crawler...");
@@ -42,5 +44,4 @@ async fn main() {
         let profile = crawler.parse_profile(&first.sales_url).await;
         println!("{}", fatal_unwrap_e!(profile, "{}"));
     }
-    pool.quit().await;
 }
