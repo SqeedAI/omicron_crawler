@@ -14,12 +14,12 @@ use std::sync::{Arc, Condvar, Mutex, Weak};
 use thirtyfour::{ChromeCapabilities, FirefoxCapabilities};
 use tokio::sync::OnceCell;
 
-pub struct DriverSessionProxy<'a> {
+pub struct SessionProxy<'a> {
     driver_session_pool: &'a SessionPool,
     pub session: Option<DriverSession>,
 }
 
-impl<'a> DriverSessionProxy<'a> {
+impl<'a> SessionProxy<'a> {
     pub fn new(session: DriverSession, driver_session_pool: &'a SessionPool) -> Self {
         Self {
             session: Some(session),
@@ -28,7 +28,7 @@ impl<'a> DriverSessionProxy<'a> {
     }
 }
 
-impl<'a> Drop for DriverSessionProxy<'a> {
+impl<'a> Drop for SessionProxy<'a> {
     fn drop(&mut self) {
         self.driver_session_pool.release(self);
     }
@@ -52,11 +52,11 @@ impl SessionPool {
         };
         session_pool
     }
-    pub fn acquire(&self) -> Option<DriverSessionProxy> {
+    pub fn acquire(&self) -> Option<SessionProxy> {
         match self.available_sessions.pop() {
             Some(session) => Some({
                 info!("Acquiring session, {} available", self.available_sessions.len());
-                DriverSessionProxy::new(session, &self)
+                SessionProxy::new(session, &self)
             }),
             None => None,
         }
@@ -69,7 +69,7 @@ impl SessionPool {
             .wait_while(signal_lock, |_| self.available_sessions.len() != self.available_sessions.capacity());
     }
 
-    pub fn release(&self, session: &mut DriverSessionProxy) {
+    pub fn release(&self, session: &mut SessionProxy) {
         fatal_unwrap__!(self.available_sessions.push(session.session.take().unwrap()), "failed to push");
         if self.available_sessions.len() == self.available_sessions.capacity() {
             self.sessions_available_signal.notify_all();
