@@ -1,4 +1,4 @@
-use omicron_crawler::driver::driver_pool::DriverSessionManager;
+use omicron_crawler::driver::driver_manager::DriverSessionManager;
 use omicron_crawler::driver::driver_service::ChromeDriverService;
 use omicron_crawler::env::get_env;
 use omicron_crawler::linkedin::crawler::Crawler;

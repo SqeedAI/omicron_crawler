@@ -3,7 +3,7 @@ extern crate log;
 
 use actix_web::web::get;
 use log::LevelFilter;
-use omicron_crawler::driver::driver_pool::DriverSessionManager;
+use omicron_crawler::driver::driver_manager::DriverSessionManager;
 use omicron_crawler::driver::driver_service::{ChromeDriverService, GeckoDriverService};
 use omicron_crawler::env::get_env;
 use omicron_crawler::fatal_assert;
