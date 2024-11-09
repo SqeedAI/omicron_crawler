@@ -57,10 +57,18 @@ impl<ServiceType> DriverSessionManager<ServiceType>
 where
     ServiceType: DriverService,
 {
-    pub async fn new(host: &str, port: u16, session_count: u16, driver_path: &str, profile_path: &str, binary_path: Option<&str>) -> Self {
-        let service = ServiceType::new(port, session_count, driver_path, profile_path).await;
+    pub async fn new(
+        driver_host: &str,
+        driver_port: u16,
+        session_count: u16,
+        driver_path: &str,
+        profile_path: &str,
+        binary_path: Option<&str>,
+    ) -> Self {
+        let service = ServiceType::new(driver_port, session_count, driver_path, profile_path).await;
         let params = service.session_params().await;
-        let sessions = ServiceType::SessionInitializerType::create_sessions(host, port, params, session_count, binary_path).await;
+        let sessions =
+            ServiceType::SessionInitializerType::create_sessions(driver_host, driver_port, params, session_count, binary_path).await;
         let queue = ArrayQueue::new(session_count as usize);
         for session in sessions {
             fatal_unwrap__!(queue.push(session), "Failed to push session");

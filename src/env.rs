@@ -30,6 +30,7 @@ pub struct Env {
     pub profile_path: String,
     pub browser: Browser,
     pub driver_host: String,
+    pub driver_port: u16,
     pub driver_session_count: u16,
 }
 
@@ -55,6 +56,10 @@ pub fn env_host() -> (String, u16) {
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
     (host, port)
+}
+
+pub fn env_port() -> u16 {
+    std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080)
 }
 
 pub fn env_chrome_driver_path() -> String {
@@ -92,16 +97,8 @@ pub fn env_browser() -> Browser {
         Err(_) => Chrome,
     }
 }
-pub fn env_firefox_profile_path() -> String {
-    std::env::var("FIREFOX_PROFILE_PATH").unwrap_or_else(|_| "./profile/".to_string())
-}
-
 pub fn env_chrome_profile_path() -> String {
     std::env::var("CHOMRE_PROFILE_PATH").unwrap_or_else(|_| "./user_data/".to_string())
-}
-
-pub fn env_firefox_binary_path() -> String {
-    std::env::var("FIREFOX_BINARY_PATH").unwrap_or_else(|_| "C:\\Program Files\\Mozilla Firefox\\firefox.exe".to_string())
 }
 
 pub fn driver_path(browser: Browser) -> String {
@@ -111,34 +108,35 @@ pub fn driver_path(browser: Browser) -> String {
     }
 }
 
-pub fn browser_binary_path(browser: Browser) -> Option<String> {
+pub fn env_browser_binary_path(browser: Browser) -> Option<String> {
     match browser {
-        Chrome => Some(env_firefox_binary_path()),
-        Firefox => None,
+        Chrome => None,
+        Firefox => Some(std::env::var("BROWSER_BINARY_PATH").unwrap_or_else(|_| "./profile/".to_string())),
     }
 }
 
 pub fn profile_path(browser: Browser) -> String {
     match browser {
-        Chrome => env_chrome_profile_path(),
-        Firefox => env_firefox_profile_path(),
+        Chrome => std::env::var("CHROME_PROFILE_PATH").unwrap_or_else(|_| "./user_data/".to_string()),
+        Firefox => std::env::var("FIREFOX_PROFILE_PATH").unwrap_or_else(|_| "./user_data/".to_string()),
     }
 }
 
 pub async fn get_env() -> &'static Env {
     let browser = env_browser();
     let driver_path = driver_path(browser);
-    let browser_binary_path = browser_binary_path(browser);
+    let browser_binary_path = env_browser_binary_path(browser);
     let profile_path = profile_path(browser);
     ENV.get_or_init(|| async {
         Env {
             log_level: env_log_level(),
-            port: env_driver_port(),
+            port: env_port(),
             host: env_driver_host(),
             driver_path,
             browser_binary_path,
             profile_path,
             browser: env_browser(),
+            driver_port: env_driver_port(),
             driver_host: env_driver_host(),
             driver_session_count: env_driver_session_count(),
         }

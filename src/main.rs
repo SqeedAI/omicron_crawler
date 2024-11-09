@@ -25,8 +25,8 @@ async fn main() {
     }
     let env = get_env().await;
     let pool: DriverSessionManager<GeckoDriverService> = DriverSessionManager::new(
-        env.host.as_str(),
-        env.port,
+        env.driver_host.as_str(),
+        env.driver_port,
         1,
         env.driver_path.as_str(),
         env.profile_path.as_str(),
@@ -49,4 +49,5 @@ async fn main() {
         let profile = crawler.parse_profile(&first.sales_url).await;
         println!("{}", fatal_unwrap_e!(profile, "{}"));
     }
+    pool.quit().await;
 }

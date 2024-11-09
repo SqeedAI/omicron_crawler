@@ -25,8 +25,8 @@ impl SessionInitializer for ChromeSessionInitializer {
     }
 }
 
-pub struct FirefoxSessionInitializer;
-impl SessionInitializer for FirefoxSessionInitializer {
+pub struct GeckoSessionInitializer;
+impl SessionInitializer for GeckoSessionInitializer {
     type Service = GeckoDriverService;
     async fn create_sessions<'a>(
         host: &str,
@@ -37,11 +37,15 @@ impl SessionInitializer for FirefoxSessionInitializer {
     ) -> Vec<DriverSession> {
         let (base64_profile, ports) = param;
         let mut results = Vec::with_capacity(session_count as usize);
-        let port = port.to_string();
         for i in ports {
-            let driver =
-                DriverSession::new::<<Self::Service as DriverService>::BrowserConfigType>(host, port.as_str(), base64_profile, binary_path)
-                    .await;
+            let port_str = i.to_string();
+            let driver = DriverSession::new::<<Self::Service as DriverService>::BrowserConfigType>(
+                host,
+                port_str.as_str(),
+                base64_profile,
+                binary_path,
+            )
+            .await;
             results.push(driver);
         }
         results

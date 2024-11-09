@@ -1,5 +1,5 @@
 use crate::driver::browser_config::{Chrome, Firefox};
-use crate::driver::session_initializer::{ChromeSessionInitializer, FirefoxSessionInitializer};
+use crate::driver::session_initializer::{ChromeSessionInitializer, GeckoSessionInitializer};
 use crate::driver::traits::DriverService;
 use crate::env::get_env;
 use crate::utils::{generate_random_string, patch_binary_with_random};
@@ -179,7 +179,7 @@ impl GeckoDriverService {
 impl DriverService for GeckoDriverService {
     type BrowserConfigType = Firefox;
     type Param<'a> = (&'a str, Range<u16>);
-    type SessionInitializerType = FirefoxSessionInitializer;
+    type SessionInitializerType = GeckoSessionInitializer;
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
         let path_str = driver_path;
         let signal = Arc::new(Condvar::new());
@@ -235,7 +235,7 @@ impl DriverService for GeckoDriverService {
         info!("Preparing gecko session base64 profile...");
         let base64_profile = Self::create_session_dirs(profile_path);
         Self {
-            ports: port..session_count,
+            ports: port..port + session_count,
             driver_services: results,
             base64_profile,
         }

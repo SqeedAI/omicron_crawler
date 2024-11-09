@@ -11,7 +11,7 @@ pub trait DriverService {
     where
         Self: 'a;
     type SessionInitializerType: SessionInitializer<Service = Self>;
-    async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self;
+    async fn new(driver_port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self;
     async fn session_params<'a>(&'a self) -> Self::Param<'a>;
 }
 
