@@ -391,7 +391,7 @@ pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str
         .await
     {
         Ok(name_span) => name_span,
-        Err(_) => return Err(ParseError(String::from_str("Failed to find name span").unwrap())),
+        Err(_) => return Err(ParseError(String::from_str("Failed to find name").unwrap())),
     };
 
     let profile_options = match driver

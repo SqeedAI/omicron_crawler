@@ -8,7 +8,6 @@ use std::sync::Arc;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
-    Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
     let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
@@ -78,7 +77,6 @@ async fn test_parse_1() {
             }
         }
     }
-    pool.quit().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -230,7 +228,6 @@ async fn test_parse_3() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_4() {
     Logger::init(log::LevelFilter::Trace);
-    fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
     let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
         env.driver_host.as_str(),
