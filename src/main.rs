@@ -49,5 +49,4 @@ async fn main() {
         let profile = crawler.parse_profile(&first.sales_url).await;
         println!("{}", fatal_unwrap_e!(profile, "{}"));
     }
-    pool.quit().await;
 }

@@ -1,18 +1,26 @@
 use omicron_crawler::driver::driver_pool::DriverSessionManager;
 use omicron_crawler::driver::driver_service::ChromeDriverService;
+use omicron_crawler::env::get_env;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
-use omicron_crawler::utils::{chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env};
 use std::sync::Arc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
-    let host = driver_host_from_env();
-    let port = driver_port_from_env();
-    let path = chrome_driver_path_from_env();
-    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
+    Logger::init(log::LevelFilter::Trace);
+    fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
+    let env = get_env().await;
+    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+        env.driver_host.as_str(),
+        env.driver_port,
+        1,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
+
     {
         let proxy = pool.acquire().unwrap();
         let crawler = Crawler::new(proxy).await;
@@ -76,11 +84,17 @@ async fn test_parse_1() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_2() {
     Logger::init(log::LevelFilter::Trace);
-    let host = driver_host_from_env();
-    let port = driver_port_from_env();
-    let path = chrome_driver_path_from_env();
-    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
+    fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
+    let env = get_env().await;
+    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+        env.driver_host.as_str(),
+        env.driver_port,
+        1,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url =
@@ -147,11 +161,17 @@ async fn test_parse_2() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_3() {
     Logger::init(log::LevelFilter::Trace);
-    let host = driver_host_from_env();
-    let port = driver_port_from_env();
-    let path = chrome_driver_path_from_env();
-    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 1).await;
+    fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
+    let env = get_env().await;
+    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+        env.driver_host.as_str(),
+        env.driver_port,
+        1,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
@@ -209,12 +229,18 @@ async fn test_parse_3() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_parse_4() {
-    Logger::init(log::LevelFilter::Info);
-    let host = driver_host_from_env();
-    let port = driver_port_from_env();
-    let path = chrome_driver_path_from_env();
-    let _driver_service = ChromeDriverService::new(port.clone(), path.as_str()).await;
-    let pool = DriverSessionManager::new(host.as_str(), port.as_str(), 2).await;
+    Logger::init(log::LevelFilter::Trace);
+    fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
+    let env = get_env().await;
+    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+        env.driver_host.as_str(),
+        env.driver_port,
+        1,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";
