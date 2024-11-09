@@ -1,5 +1,5 @@
-use omicron_crawler::driver::driver_manager::DriverSessionManager;
-use omicron_crawler::driver::driver_service::ChromeDriverService;
+use omicron_crawler::driver::service::ChromeDriverService;
+use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
@@ -10,7 +10,7 @@ async fn test_parse_1() {
     Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -19,62 +19,60 @@ async fn test_parse_1() {
         env.browser_binary_path.as_deref(),
     )
     .await;
-
-    {
-        let proxy = pool.acquire().unwrap();
-        let crawler = Crawler::new(proxy).await;
-        let profile_url =
-            "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
-        let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
-        assert_eq!(results.name, "Matus Chochlik");
-        assert_eq!(results.url, "https://www.linkedin.com/in/matus-chochlik-154a7827");
-        assert!(results.profile_picture_url.len() > 0);
-        println!("{}", results.profile_picture_url);
-        assert_eq!(results.description, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
-        assert_eq!(results.location, "Slovakia");
-        assert_eq!(results.about.is_some(), true);
-        println!("{}", results.about.unwrap());
-        match results.experience {
-            Some(experience) => {
-                for experience in experience.iter() {
-                    println!("{}", *experience);
-                }
-                assert_eq!(experience.len(), 8);
+    let pool = &manager.pool;
+    let proxy = pool.acquire().unwrap();
+    let crawler = Crawler::new(proxy).await;
+    let profile_url =
+        "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
+    let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
+    assert_eq!(results.name, "Matus Chochlik");
+    assert_eq!(results.url, "https://www.linkedin.com/in/matus-chochlik-154a7827");
+    assert!(results.profile_picture_url.len() > 0);
+    println!("{}", results.profile_picture_url);
+    assert_eq!(results.description, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
+    assert_eq!(results.location, "Slovakia");
+    assert_eq!(results.about.is_some(), true);
+    println!("{}", results.about.unwrap());
+    match results.experience {
+        Some(experience) => {
+            for experience in experience.iter() {
+                println!("{}", *experience);
             }
-            None => {
-                assert!(false, "No experience found");
-            }
+            assert_eq!(experience.len(), 8);
         }
-        match results.education {
-            Some(education) => {
-                assert_eq!(education.len(), 1);
-                assert_eq!(education[0].title, "University of Zilina");
-                assert_eq!(education[0].field, "Applied Computer Science");
-                assert_eq!(education[0].degree, "PhD");
-            }
-            None => {
-                assert!(false, "No education found");
-            }
+        None => {
+            assert!(false, "No experience found");
         }
-        match results.skills {
-            Some(skills) => {
-                assert_eq!(skills.len(), 42);
-            }
-            None => {
-                assert!(false, "No skills found");
-            }
+    }
+    match results.education {
+        Some(education) => {
+            assert_eq!(education.len(), 1);
+            assert_eq!(education[0].title, "University of Zilina");
+            assert_eq!(education[0].field, "Applied Computer Science");
+            assert_eq!(education[0].degree, "PhD");
         }
-        match results.languages {
-            Some(languages) => {
-                assert_eq!(languages.len(), 2);
-                assert_eq!(languages[0].language, "English");
-                assert_eq!(languages[0].fluency, "Professional working proficiency");
-                assert_eq!(languages[1].language, "German");
-                assert_eq!(languages[1].fluency, "Limited working proficiency");
-            }
-            None => {
-                assert!(false, "No languages found");
-            }
+        None => {
+            assert!(false, "No education found");
+        }
+    }
+    match results.skills {
+        Some(skills) => {
+            assert_eq!(skills.len(), 42);
+        }
+        None => {
+            assert!(false, "No skills found");
+        }
+    }
+    match results.languages {
+        Some(languages) => {
+            assert_eq!(languages.len(), 2);
+            assert_eq!(languages[0].language, "English");
+            assert_eq!(languages[0].fluency, "Professional working proficiency");
+            assert_eq!(languages[1].language, "German");
+            assert_eq!(languages[1].fluency, "Limited working proficiency");
+        }
+        None => {
+            assert!(false, "No languages found");
         }
     }
 }
@@ -84,7 +82,7 @@ async fn test_parse_2() {
     Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -93,6 +91,7 @@ async fn test_parse_2() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url =
@@ -161,7 +160,7 @@ async fn test_parse_3() {
     Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -170,6 +169,7 @@ async fn test_parse_3() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
@@ -229,7 +229,7 @@ async fn test_parse_3() {
 async fn test_parse_4() {
     Logger::init(log::LevelFilter::Trace);
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -238,6 +238,7 @@ async fn test_parse_4() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
     let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";

@@ -1,6 +1,6 @@
 pub mod browser_config;
-pub mod driver_manager;
-pub mod driver_service;
-pub mod driver_session;
+pub mod service;
+pub mod session;
 pub mod session_initializer;
+pub mod session_manager;
 pub mod traits;

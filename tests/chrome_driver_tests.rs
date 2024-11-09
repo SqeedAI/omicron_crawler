@@ -1,5 +1,5 @@
-use omicron_crawler::driver::driver_manager::DriverSessionManager;
-use omicron_crawler::driver::driver_service::ChromeDriverService;
+use omicron_crawler::driver::service::ChromeDriverService;
+use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
@@ -9,7 +9,7 @@ async fn test_connection() {
     Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -18,6 +18,7 @@ async fn test_connection() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
     let driver = proxy.session.as_ref().unwrap();
     let profile_url =
@@ -35,7 +36,7 @@ async fn test_multiple_sessions() {
     Logger::init(log::LevelFilter::Trace);
     fatal_unwrap_e!(dotenvy::from_filename("test_chrome.env"), "Failed to load .env file {}");
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         2,
@@ -44,6 +45,7 @@ async fn test_multiple_sessions() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
 
@@ -56,5 +58,4 @@ async fn test_multiple_sessions() {
             });
         }
     });
-    pool.quit().await;
 }

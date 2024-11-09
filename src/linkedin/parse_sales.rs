@@ -1,4 +1,4 @@
-use crate::driver::driver_session::DriverSession;
+use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::{InteractionError, ParseError};
 use crate::errors::{CrawlerError, CrawlerResult};
 use crate::linkedin::enums::Functions;

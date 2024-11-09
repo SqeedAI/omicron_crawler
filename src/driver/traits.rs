@@ -1,4 +1,4 @@
-use crate::driver::driver_session::DriverSession;
+use crate::driver::session::DriverSession;
 
 pub trait BrowserConfig {
     type Capabilities: Into<thirtyfour::Capabilities>;

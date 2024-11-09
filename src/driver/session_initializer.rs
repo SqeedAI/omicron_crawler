@@ -1,5 +1,5 @@
-use crate::driver::driver_service::{ChromeDriverService, GeckoDriverService};
-use crate::driver::driver_session::DriverSession;
+use crate::driver::service::{ChromeDriverService, GeckoDriverService};
+use crate::driver::session::DriverSession;
 use crate::driver::traits::{BrowserConfig, DriverService, SessionInitializer};
 
 pub struct ChromeSessionInitializer;

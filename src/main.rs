@@ -3,8 +3,8 @@ extern crate log;
 
 use actix_web::web::get;
 use log::LevelFilter;
-use omicron_crawler::driver::driver_manager::DriverSessionManager;
-use omicron_crawler::driver::driver_service::{ChromeDriverService, GeckoDriverService};
+use omicron_crawler::driver::service::{ChromeDriverService, GeckoDriverService};
+use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
@@ -24,7 +24,7 @@ async fn main() {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
     let env = get_env().await;
-    let pool: DriverSessionManager<ChromeDriverService> = DriverSessionManager::new(
+    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
         1,
@@ -33,6 +33,7 @@ async fn main() {
         env.browser_binary_path.as_deref(),
     )
     .await;
+    let pool = &manager.pool;
     let session = pool.acquire().unwrap();
     info!("Acquired session, starting crawler...");
     let crawler = Crawler::new(session).await;

@@ -1,5 +1,4 @@
-use crate::driver::driver_manager::DriverSessionProxy;
-use crate::driver::traits::DriverService;
+use crate::driver::session_manager::DriverSessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::enums::Functions;
@@ -7,18 +6,12 @@ use crate::linkedin::parse_sales::{parse_sales_profile, parse_search, set_functi
 use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
 
-pub struct Crawler<'a, DriverServiceType>
-where
-    DriverServiceType: DriverService,
-{
-    pub proxy: DriverSessionProxy<'a, DriverServiceType>,
+pub struct Crawler<'a> {
+    pub proxy: DriverSessionProxy<'a>,
 }
 
-impl<'a, DriverServiceType> Crawler<'a, DriverServiceType>
-where
-    DriverServiceType: DriverService,
-{
-    pub async fn new(proxy: DriverSessionProxy<'a, DriverServiceType>) -> Self {
+impl<'a> Crawler<'a> {
+    pub async fn new(proxy: DriverSessionProxy<'a>) -> Self {
         Self { proxy }
     }
     pub async fn set_search_filters(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
