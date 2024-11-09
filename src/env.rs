@@ -79,8 +79,6 @@ pub fn env_driver_session_count() -> u16 {
     let sessions = std::env::var("DRIVER_SESSION_COUNT").unwrap_or_else(|_| "1".to_string());
     fatal_unwrap_e!(sessions.parse(), "Failed to parse DRIVER_SESSION_COUNT {}")
 }
-// OPTIMIZE Create an env struct that is initialized at the start of the program.
-// The struct shall contain correct types, not strings. Browser type should be an enum.
 pub fn env_browser() -> Browser {
     match std::env::var("BROWSER") {
         Ok(browser) => match browser.as_str() {

@@ -84,8 +84,6 @@ impl ChromeDriverService {
         session_folders
     }
 }
-
-// OPTIMIZE Param should be of reference not a Vec copy
 impl DriverService for ChromeDriverService {
     type BrowserConfigType = Chrome;
     type Param<'a> = &'a Vec<String>;
@@ -178,7 +176,6 @@ impl GeckoDriverService {
         encoded
     }
 }
-// OPTIMIZE Param should use a String as a reference not a String copy
 impl DriverService for GeckoDriverService {
     type BrowserConfigType = Firefox;
     type Param<'a> = (&'a str, Range<u16>);
