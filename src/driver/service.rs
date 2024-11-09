@@ -113,7 +113,7 @@ impl DriverService for ChromeDriverService {
                 out_str.clear();
                 match reader.read_line(&mut out_str) {
                     Ok(0) => {
-                        println!("[CHROME-DRIVER] Process ended");
+                        info!("[CHROME-DRIVER] Process ended");
                         break;
                     }
                     Ok(_) => {
@@ -123,10 +123,10 @@ impl DriverService for ChromeDriverService {
                             tokio_signal.notify_all();
                             break;
                         }
-                        println!("[CHROME-DRIVER] {}", out_str);
+                        info!("[CHROME-DRIVER] {}", out_str);
                     }
                     Err(e) => {
-                        println!("[CHROME-DRIVER] Error reading output: {}", e);
+                        warn!("[CHROME-DRIVER] Error reading output: {}", e);
                         break;
                     }
                 }
@@ -137,14 +137,14 @@ impl DriverService for ChromeDriverService {
                 match reader.read_line(&mut out_str) {
                     Ok(0) => {
                         // EOF reached - pipe closed
-                        println!("[CHROME-DRIVER] Process ended");
+                        info!("[CHROME-DRIVER] Process ended");
                         break;
                     }
                     Ok(_) => {
-                        println!("[CHROME-DRIVER]{}", out_str);
+                        debug!("[CHROME-DRIVER]{}", out_str);
                     }
                     Err(e) => {
-                        println!("[CHROME-DRIVER] Error reading output: {}", e);
+                        warn!("[CHROME-DRIVER] Error reading output: {}", e);
                         break;
                     }
                 }
@@ -231,12 +231,12 @@ impl DriverService for GeckoDriverService {
                     match buff_reader.read_line(&mut out_str) {
                         Ok(0) => {
                             // EOF reached - pipe closed
-                            println!("[GECKO-DRIVER {}] Process ended", i);
+                            info!("[GECKO-DRIVER {}] Process ended", i);
                             break;
                         }
                         Ok(_) => {
                             if out_str.contains(EXPECTED_OUTPUT) {
-                                println!("[GECKO-DRIVER {}] {}", i, out_str);
+                                info!("[GECKO-DRIVER {}] {}", i, out_str);
                                 let mut guard = tokio_signal_lock.lock().unwrap();
                                 *guard -= 1;
                                 tokio_signal.notify_all();
@@ -244,7 +244,7 @@ impl DriverService for GeckoDriverService {
                             }
                         }
                         Err(e) => {
-                            println!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
+                            warn!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
                             break;
                         }
                     }
@@ -256,14 +256,14 @@ impl DriverService for GeckoDriverService {
                     match buff_reader.read_line(&mut out_str) {
                         Ok(0) => {
                             // EOF reached - pipe closed
-                            println!("[GECKO-DRIVER {}] Process ended", i);
+                            info!("[GECKO-DRIVER {}] Process ended", i);
                             break;
                         }
                         Ok(_) => {
-                            println!("[GECKO-DRIVER {}]{}", i, out_str);
+                            debug!("[GECKO-DRIVER {}]{}", i, out_str);
                         }
                         Err(e) => {
-                            println!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
+                            warn!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
                             break;
                         }
                     }
