@@ -5,10 +5,10 @@ use crate::driver::traits::{BrowserConfig, DriverService, SessionInitializer};
 pub struct ChromeSessionInitializer;
 impl SessionInitializer for ChromeSessionInitializer {
     type Service = ChromeDriverService;
-    async fn create_sessions(
+    async fn create_sessions<'a>(
         host: &str,
         port: u16,
-        param: <Self::Service as DriverService>::Param,
+        param: <Self::Service as DriverService>::Param<'a>,
         session_count: u16,
         binary_path: Option<&str>,
     ) -> Vec<DriverSession> {
@@ -28,10 +28,10 @@ impl SessionInitializer for ChromeSessionInitializer {
 pub struct FirefoxSessionInitializer;
 impl SessionInitializer for FirefoxSessionInitializer {
     type Service = GeckoDriverService;
-    async fn create_sessions(
+    async fn create_sessions<'a>(
         host: &str,
         port: u16,
-        param: <Self::Service as DriverService>::Param,
+        param: <Self::Service as DriverService>::Param<'a>,
         session_count: u16,
         binary_path: Option<&str>,
     ) -> Vec<DriverSession> {
@@ -39,13 +39,9 @@ impl SessionInitializer for FirefoxSessionInitializer {
         let mut results = Vec::with_capacity(session_count as usize);
         let port = port.to_string();
         for i in ports {
-            let driver = DriverSession::new::<<Self::Service as DriverService>::BrowserConfigType>(
-                host,
-                port.as_str(),
-                base64_profile.as_str(),
-                binary_path,
-            )
-            .await;
+            let driver =
+                DriverSession::new::<<Self::Service as DriverService>::BrowserConfigType>(host, port.as_str(), base64_profile, binary_path)
+                    .await;
             results.push(driver);
         }
         results

@@ -88,7 +88,7 @@ impl ChromeDriverService {
 // OPTIMIZE Param should be of reference not a Vec copy
 impl DriverService for ChromeDriverService {
     type BrowserConfigType = Chrome;
-    type Param = Vec<String>;
+    type Param<'a> = &'a Vec<String>;
     type SessionInitializerType = ChromeSessionInitializer;
 
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
@@ -133,8 +133,8 @@ impl DriverService for ChromeDriverService {
         Self { driver_service, profiles }
     }
 
-    async fn session_params(&self) -> Self::Param {
-        self.profiles.clone()
+    async fn session_params<'a>(&'a self) -> Self::Param<'a> {
+        &self.profiles
     }
 }
 
@@ -181,7 +181,7 @@ impl GeckoDriverService {
 // OPTIMIZE Param should use a String as a reference not a String copy
 impl DriverService for GeckoDriverService {
     type BrowserConfigType = Firefox;
-    type Param = (String, Range<u16>);
+    type Param<'a> = (&'a str, Range<u16>);
     type SessionInitializerType = FirefoxSessionInitializer;
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
         let path_str = driver_path;
@@ -243,8 +243,8 @@ impl DriverService for GeckoDriverService {
             base64_profile,
         }
     }
-    async fn session_params(&self) -> Self::Param {
-        (self.base64_profile.clone(), self.ports.clone())
+    async fn session_params<'a>(&'a self) -> Self::Param<'a> {
+        (self.base64_profile.as_str(), self.ports.clone())
     }
 }
 
