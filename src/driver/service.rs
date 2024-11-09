@@ -102,23 +102,52 @@ impl DriverService for ChromeDriverService {
         let tokio_signal = signal.clone();
         let tokio_signal_lock = signal_lock.clone();
 
+        ///REFACTOR reuse the same code for both chrome and gecko
         tokio::spawn(async move {
-            let expected_output = "success";
+            const EXPECTED_OUTPUT: &str = "success";
 
             let mut reader = BufReader::new(stdout);
             let mut out_str = String::new();
             fatal_unwrap_e!(reader.read_line(&mut out_str), "Failed to read line {}");
-
             loop {
-                println!("[CHROME-DRIVER] {}", out_str);
-                if out_str.contains(&expected_output) {
-                    let mut guard = tokio_signal_lock.lock().unwrap();
-                    *guard = false;
-                    tokio_signal.notify_all();
-                    break;
-                }
                 out_str.clear();
-                fatal_unwrap_e!(reader.read_line(&mut out_str), "Failed to read line {}");
+                match reader.read_line(&mut out_str) {
+                    Ok(0) => {
+                        println!("[CHROME-DRIVER] Process ended");
+                        break;
+                    }
+                    Ok(_) => {
+                        if out_str.contains(EXPECTED_OUTPUT) {
+                            let mut guard = tokio_signal_lock.lock().unwrap();
+                            *guard = false;
+                            tokio_signal.notify_all();
+                            break;
+                        }
+                        println!("[CHROME-DRIVER] {}", out_str);
+                    }
+                    Err(e) => {
+                        println!("[CHROME-DRIVER] Error reading output: {}", e);
+                        break;
+                    }
+                }
+            }
+            // No need for an if in a loop
+            loop {
+                out_str.clear();
+                match reader.read_line(&mut out_str) {
+                    Ok(0) => {
+                        // EOF reached - pipe closed
+                        println!("[CHROME-DRIVER] Process ended");
+                        break;
+                    }
+                    Ok(_) => {
+                        println!("[CHROME-DRIVER]{}", out_str);
+                    }
+                    Err(e) => {
+                        println!("[CHROME-DRIVER] Error reading output: {}", e);
+                        break;
+                    }
+                }
             }
         });
 
@@ -181,6 +210,7 @@ impl DriverService for GeckoDriverService {
     type Param<'a> = (&'a str, Range<u16>);
     type SessionInitializerType = GeckoSessionInitializer;
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
+        const EXPECTED_OUTPUT: &str = "Listening on";
         let path_str = driver_path;
         let signal = Arc::new(Condvar::new());
         let signal_lock = Arc::new(Mutex::new(session_count));
@@ -198,24 +228,44 @@ impl DriverService for GeckoDriverService {
                 let mut buff_reader = BufReader::new(stdout);
                 let mut out_str = String::new();
                 loop {
-                    out_str.clear();
-                    let _ = buff_reader.read_line(&mut out_str);
-                    if out_str.contains("Listening on") {
-                        println!("[GECKO-DRIVER {}] {}", i, out_str);
-                        let mut guard = tokio_signal_lock.lock().unwrap();
-                        *guard -= 1;
-                        tokio_signal.notify_all();
-                        break;
+                    match buff_reader.read_line(&mut out_str) {
+                        Ok(0) => {
+                            // EOF reached - pipe closed
+                            println!("[GECKO-DRIVER {}] Process ended", i);
+                            break;
+                        }
+                        Ok(_) => {
+                            if out_str.contains(EXPECTED_OUTPUT) {
+                                println!("[GECKO-DRIVER {}] {}", i, out_str);
+                                let mut guard = tokio_signal_lock.lock().unwrap();
+                                *guard -= 1;
+                                tokio_signal.notify_all();
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            println!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
+                            break;
+                        }
                     }
                 }
-                // No point to have an if in a loop
+
+                // Second loop that exits when pipe is closed. No need for an if in a loop
                 loop {
                     out_str.clear();
-                    if let Ok(len) = buff_reader.read_line(&mut out_str) {
-                        if len == 0 {
-                            continue;
+                    match buff_reader.read_line(&mut out_str) {
+                        Ok(0) => {
+                            // EOF reached - pipe closed
+                            println!("[GECKO-DRIVER {}] Process ended", i);
+                            break;
                         }
-                        println!("[GECKO-DRIVER {}]{}", i, out_str);
+                        Ok(_) => {
+                            println!("[GECKO-DRIVER {}]{}", i, out_str);
+                        }
+                        Err(e) => {
+                            println!("[GECKO-DRIVER {}] Error reading output: {}", i, e);
+                            break;
+                        }
                     }
                 }
             });

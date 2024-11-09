@@ -12,6 +12,7 @@ use std::pin::Pin;
 use std::sync::atomic::AtomicU16;
 use std::sync::{Arc, Condvar, Mutex, Weak};
 use thirtyfour::{ChromeCapabilities, FirefoxCapabilities};
+use tokio::runtime::{Builder, Runtime};
 use tokio::sync::OnceCell;
 
 pub struct SessionProxy<'a> {
@@ -78,6 +79,27 @@ impl SessionPool {
     }
 }
 
+impl Drop for SessionPool {
+    fn drop(&mut self) {
+        self.wait_for_all_sessions_to_be_released();
+        let sessions = &self.available_sessions;
+        thread::scope(|s| {
+            s.spawn(|_| {
+                let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+                runtime.block_on(async move {
+                    while let Some(session) = sessions.pop() {
+                        if let Err(e) = session.quit().await {
+                            eprintln!("Failed to quit the session: {}", e);
+                        } else {
+                            println!("Session quit successfully");
+                        }
+                    }
+                });
+            });
+        })
+        .unwrap();
+    }
+}
 pub struct SessionManager<ServiceType>
 where
     ServiceType: DriverService,

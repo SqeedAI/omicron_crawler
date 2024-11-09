@@ -36,11 +36,9 @@ impl DriverSession {
         let driver = &self.driver;
         let start = tokio::time::Instant::now();
         while start.elapsed() < timeout {
-            trace!("Finding element {}", by);
             match driver.find(by.clone()).await {
                 Ok(element) => return Ok(element),
                 Err(_) => {
-                    trace!("Failed to find element, retrying..");
                     tokio::time::sleep(Duration::from_millis(250)).await;
                 }
             }

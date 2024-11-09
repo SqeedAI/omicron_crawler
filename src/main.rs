@@ -24,10 +24,10 @@ async fn main() {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
     let env = get_env().await;
-    let manager: SessionManager<ChromeDriverService> = SessionManager::new(
+    let manager: SessionManager<GeckoDriverService> = SessionManager::new(
         env.driver_host.as_str(),
         env.driver_port,
-        1,
+        env.driver_session_count,
         env.driver_path.as_str(),
         env.profile_path.as_str(),
         env.browser_binary_path.as_deref(),
