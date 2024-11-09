@@ -1,5 +1,5 @@
 use crate::driver::driver_session::DriverSession;
-use crate::driver::traits::{BrowserConfig, DriverService};
+use crate::driver::traits::{BrowserConfig, DriverService, SessionInitializer};
 use crate::env::get_env;
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
@@ -14,13 +14,19 @@ use std::sync::{Arc, Condvar, Mutex, Weak};
 use thirtyfour::{ChromeCapabilities, FirefoxCapabilities};
 use tokio::sync::OnceCell;
 
-pub struct DriverSessionProxy<'a> {
-    driver_session_pool: &'a DriverSessionManager,
+pub struct DriverSessionProxy<'a, ServiceType>
+where
+    ServiceType: DriverService,
+{
+    driver_session_pool: &'a DriverSessionManager<ServiceType>,
     pub session: Option<DriverSession>,
 }
 
-impl<'a> DriverSessionProxy<'a> {
-    pub fn new(session: DriverSession, driver_session_pool: &'a DriverSessionManager) -> Self {
+impl<'a, ServiceType> DriverSessionProxy<'a, ServiceType>
+where
+    ServiceType: DriverService,
+{
+    pub fn new(session: DriverSession, driver_session_pool: &'a DriverSessionManager<ServiceType>) -> Self {
         Self {
             session: Some(session),
             driver_session_pool,
@@ -28,7 +34,10 @@ impl<'a> DriverSessionProxy<'a> {
     }
 }
 
-impl<'a> Drop for DriverSessionProxy<'a> {
+impl<'a, ServiceType> Drop for DriverSessionProxy<'a, ServiceType>
+where
+    ServiceType: DriverService,
+{
     fn drop(&mut self) {
         self.driver_session_pool.release(self);
     }
@@ -48,34 +57,24 @@ impl<ServiceType> DriverSessionManager<ServiceType>
 where
     ServiceType: DriverService,
 {
-    pub async fn new(host: &str, port: &str, session_count: u16) -> Self {
-        let service = ServiceType::new(
-            port.to_string(),
-            session_count,
-            get_env().driver_path.as_str(),
-            get_env().profile_path.as_str(),
-        )
-        .await;
-
-        for (session_dir, _) in zipped_iter.into_iter() {
-            let dir_path = session_dir.as_str();
-            trace!("Creating session");
-            let driver_session = DriverSession::new::<BrowserType>(host, port, dir_path).await;
-            fatal_unwrap__!(
-                session_pool.available_sessions.push(driver_session),
-                "Failed to add session to pool"
-            );
-            trace!("Added session to pool");
+    pub async fn new(host: &str, port: u16, session_count: u16, driver_path: &str, profile_path: &str, binary_path: Option<&str>) -> Self {
+        let service = ServiceType::new(port, session_count, driver_path, profile_path).await;
+        let params = service.session_params().await;
+        let sessions = ServiceType::SessionInitializerType::create_sessions(host, port, params, session_count, binary_path).await;
+        let queue = ArrayQueue::new(session_count as usize);
+        for session in sessions {
+            fatal_unwrap__!(queue.push(session), "Failed to push session");
         }
 
         let session_pool = DriverSessionManager {
             sessions_available_signal: Condvar::new(),
             sessions_available_signal_lock: Mutex::new(()),
-            available_sessions: ArrayQueue::new(session_count as usize),
+            driver_service: service,
+            available_sessions: queue,
         };
         session_pool
     }
-    pub fn acquire(&self) -> Option<DriverSessionProxy> {
+    pub fn acquire(&self) -> Option<DriverSessionProxy<ServiceType>> {
         match self.available_sessions.pop() {
             Some(session) => Some({
                 info!("Acquiring session, {} available", self.available_sessions.len());
@@ -92,7 +91,7 @@ where
             .wait_while(signal_lock, |_| self.available_sessions.len() != self.available_sessions.capacity());
     }
 
-    pub fn release(&self, session: &mut DriverSessionProxy) {
+    pub fn release(&self, session: &mut DriverSessionProxy<ServiceType>) {
         fatal_unwrap__!(self.available_sessions.push(session.session.take().unwrap()), "failed to push");
         if self.available_sessions.len() == self.available_sessions.capacity() {
             self.sessions_available_signal.notify_all();

@@ -1,19 +1,16 @@
 #[macro_use]
 extern crate log;
 
+use actix_web::web::get;
 use log::LevelFilter;
-use omicron_crawler::driver::driver_pool::{get_driver_session_pool, DriverSessionManager};
-use omicron_crawler::driver::driver_service::{chrome_driver_service, gecko_driver_service};
-use omicron_crawler::driver::init;
+use omicron_crawler::driver::driver_pool::DriverSessionManager;
+use omicron_crawler::driver::driver_service::{ChromeDriverService, GeckoDriverService};
+use omicron_crawler::env::get_env;
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions::Engineering;
 use omicron_crawler::logger::Logger;
-use omicron_crawler::utils::{
-    browser_from_env, chrome_driver_path_from_env, driver_host_from_env, driver_port_from_env, driver_session_count_from_env,
-    log_level_from_env,
-};
 use std::time::Duration;
 
 //TODO
@@ -23,11 +20,19 @@ use std::time::Duration;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(LevelFilter::Trace);
-    if let Err(e) = dotenvy::from_filename(".env") {
+    if let Err(e) = dotenvy::dotenv() {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
-    let browser = browser_from_env();
-    let pool = init(browser.as_str()).await;
+    let env = get_env().await;
+    let pool: DriverSessionManager<GeckoDriverService> = DriverSessionManager::new(
+        env.host.as_str(),
+        env.port,
+        1,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
     {
         let session = pool.acquire().unwrap();
         info!("Acquired session, starting crawler...");

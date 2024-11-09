@@ -2,9 +2,9 @@ use crate::env::Browser::{Chrome, Firefox};
 use crate::linkedin::profiles::Profile;
 use log::Level;
 use serde::de::Unexpected::Str;
-use std::cell::OnceCell;
 use std::fmt::{Display, Formatter};
 use thirtyfour::session;
+use tokio::sync::OnceCell;
 
 #[derive(Clone, Copy)]
 enum Browser {
@@ -15,8 +15,8 @@ enum Browser {
 impl Display for Browser {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Browser::Chrome => write!(f, "Chrome"),
-            Browser::Firefox => write!(f, "Firefox"),
+            Chrome => write!(f, "Chrome"),
+            Firefox => write!(f, "Firefox"),
         }
     }
 }
@@ -33,7 +33,7 @@ pub struct Env {
     pub driver_session_count: u16,
 }
 
-static ENV: OnceCell<Env> = OnceCell::new();
+static ENV: OnceCell<Env> = OnceCell::const_new();
 
 pub fn env_log_level() -> log::LevelFilter {
     match std::env::var("LOG_LEVEL") {
@@ -76,8 +76,8 @@ pub fn env_driver_port() -> u16 {
     )
 }
 pub fn env_driver_session_count() -> u16 {
-    let sessions = std::env::var("DRIVER_SESSION_COUNT");
-    fatal_unwrap_e!(sessions.parse(), "Failed to parse DRIVER_SESSION_COUNT {}");
+    let sessions = std::env::var("DRIVER_SESSION_COUNT").unwrap_or_else(|_| "1".to_string());
+    fatal_unwrap_e!(sessions.parse(), "Failed to parse DRIVER_SESSION_COUNT {}")
 }
 // OPTIMIZE Create an env struct that is initialized at the start of the program.
 // The struct shall contain correct types, not strings. Browser type should be an enum.
@@ -127,20 +127,23 @@ pub fn profile_path(browser: Browser) -> String {
     }
 }
 
-pub fn get_env() -> &'static Env {
+pub async fn get_env() -> &'static Env {
     let browser = env_browser();
     let driver_path = driver_path(browser);
     let browser_binary_path = browser_binary_path(browser);
     let profile_path = profile_path(browser);
-    ENV.get_or_init(|| Env {
-        log_level: env_log_level(),
-        port: env_driver_port(),
-        host: env_driver_host(),
-        driver_path,
-        browser_binary_path,
-        profile_path,
-        browser: env_browser(),
-        driver_host: env_driver_host(),
-        driver_session_count: env_driver_session_count(),
+    ENV.get_or_init(|| async {
+        Env {
+            log_level: env_log_level(),
+            port: env_driver_port(),
+            host: env_driver_host(),
+            driver_path,
+            browser_binary_path,
+            profile_path,
+            browser: env_browser(),
+            driver_host: env_driver_host(),
+            driver_session_count: env_driver_session_count(),
+        }
     })
+    .await
 }

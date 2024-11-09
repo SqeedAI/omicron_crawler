@@ -1,10 +1,12 @@
 use crate::driver::browser_config::{Chrome, Firefox};
+use crate::driver::session_initializer::{ChromeSessionInitializer, FirefoxSessionInitializer};
 use crate::driver::traits::DriverService;
 use crate::env::get_env;
 use crate::utils::{generate_random_string, patch_binary_with_random};
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
 use std::io::{BufRead, BufReader};
+use std::marker::PhantomData;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -83,9 +85,11 @@ impl ChromeDriverService {
     }
 }
 
+// OPTIMIZE Param should be of reference not a Vec copy
 impl DriverService for ChromeDriverService {
-    type Capabilities = Chrome;
-    type Param<'a> = &'a Vec<String>;
+    type BrowserConfigType = Chrome;
+    type Param = Vec<String>;
+    type SessionInitializerType = ChromeSessionInitializer;
 
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
         patch_binary_with_random(driver_path, b"cdc_", 22);
@@ -121,16 +125,16 @@ impl DriverService for ChromeDriverService {
         });
 
         let guard = signal_lock.lock().unwrap();
-        signal.wait_while(guard, |val| *val).await;
+        fatal_unwrap_e!(signal.wait_while(guard, |val| *val), "Failed to wait for geckodriver service: {}");
 
-        info!("Preparing chrome session profiles...", port);
+        info!("Preparing chrome session profiles...");
         let profiles = Self::create_session_dirs(session_count, profile_path);
 
         Self { driver_service, profiles }
     }
 
     async fn session_params(&self) -> Self::Param {
-        &self.profiles
+        self.profiles.clone()
     }
 }
 
@@ -140,14 +144,7 @@ impl Drop for ChromeDriverService {
         self.driver_service.kill().unwrap();
     }
 }
-struct Base64ProfileIter<'a>(&'a String);
-impl Iterator for Base64ProfileIter {
-    type Item<'a> = &'a String;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(&self.0)
-    }
-}
 pub struct GeckoDriverService {
     driver_services: Vec<Child>,
     base64_profile: String,
@@ -181,9 +178,11 @@ impl GeckoDriverService {
         encoded
     }
 }
+// OPTIMIZE Param should use a String as a reference not a String copy
 impl DriverService for GeckoDriverService {
-    type Capabilities = Firefox;
-    type Param<'a> = (&'a str, Range<u16>);
+    type BrowserConfigType = Firefox;
+    type Param = (String, Range<u16>);
+    type SessionInitializerType = FirefoxSessionInitializer;
     async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
         let path_str = driver_path;
         let signal = Arc::new(Condvar::new());
@@ -245,14 +244,14 @@ impl DriverService for GeckoDriverService {
         }
     }
     async fn session_params(&self) -> Self::Param {
-        (&self.base64_profile, self.ports.clone())
+        (self.base64_profile.clone(), self.ports.clone())
     }
 }
 
 impl Drop for GeckoDriverService {
     fn drop(&mut self) {
         info!("Killing driver service");
-        for mut driver in self.driver_services {
+        for mut driver in self.driver_services.iter_mut() {
             driver.kill().unwrap();
         }
     }

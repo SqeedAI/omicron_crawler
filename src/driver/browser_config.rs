@@ -71,9 +71,9 @@ impl BrowserConfig for Firefox {
 
         fatal_unwrap_e!(caps.set_encoded_profile(profile_path), "Failed to set profile {}");
         let mut prefs = FirefoxPreferences::new();
-        let firefox_binary = fatal_unwrap_e!(binary_path, "Failed to get firefox binary path {}");
+        let firefox_binary = fatal_unwrap!(binary_path, "Failed to get firefox binary path");
 
-        fatal_unwrap_e!(caps.set_firefox_binary(firefox_binary.as_str()), "Failed to set firefox binary {}");
+        fatal_unwrap_e!(caps.set_firefox_binary(firefox_binary), "Failed to set firefox binary {}");
         // fatal_unwrap_e!(caps.set_headless(), "Failed to set headless {}");
 
         fatal_unwrap_e!(
