@@ -205,6 +205,7 @@ impl GeckoDriverService {
         encoded
     }
 }
+///TODO PATCHING FOR LINUX GECKO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 impl DriverService for GeckoDriverService {
     type BrowserConfigType = Firefox;
     type Param<'a> = (&'a str, Range<u16>);
