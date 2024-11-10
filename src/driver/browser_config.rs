@@ -55,11 +55,29 @@ pub struct Firefox;
 
 impl Firefox {
     fn patch_xul_config(binary_path: &str) {
-        let mut xul_path_buf = PathBuf::from(binary_path);
-        xul_path_buf.pop();
-        xul_path_buf.push("xul.dll");
-        let xul_path = xul_path_buf.to_str().unwrap();
-        patch_binary_with_random(xul_path, b"webdriver", 9);
+        let mut lib_path_buf = PathBuf::from(binary_path);
+        lib_path_buf.pop();
+
+        #[cfg(target_os = "windows")]
+        {
+            lib_path_buf.push("xul.dll");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            lib_path_buf.push("libxul.so");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            lib_path_buf.push("XUL");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
     }
 }
 impl BrowserConfig for Firefox {
@@ -107,6 +125,7 @@ impl BrowserConfig for Firefox {
         for arg in initial_args.iter() {
             fatal_unwrap_e!(caps.add_arg(*arg), "Failed to add arg {}");
         }
+        // Optimize, this is supposed to happen only once
         Self::patch_xul_config(binary_path.unwrap());
         caps
     }
