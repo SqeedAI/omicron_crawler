@@ -13,7 +13,7 @@ pub struct Chrome;
 impl BrowserConfig for Chrome {
     type Capabilities = ChromeCapabilities;
 
-    fn new(profile_path: &str, binary_path: Option<&str>) -> Self::Capabilities {
+    fn new(profile_path: &str) -> Self::Capabilities {
         let mut caps = DesiredCapabilities::chrome();
         let initial_args = get_chrome_args();
         for arg in initial_args.iter() {
@@ -53,45 +53,16 @@ pub fn get_chrome_args() -> Vec<&'static str> {
 
 pub struct Firefox;
 
-impl Firefox {
-    fn patch_xul_config(binary_path: &str) {
-        let mut lib_path_buf = PathBuf::from(binary_path);
-        lib_path_buf.pop();
-
-        #[cfg(target_os = "windows")]
-        {
-            lib_path_buf.push("xul.dll");
-            let xul_path = lib_path_buf.to_str().unwrap();
-            patch_binary_with_random(xul_path, b"webdriver", 9);
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            lib_path_buf.push("libxul.so");
-            let xul_path = lib_path_buf.to_str().unwrap();
-            patch_binary_with_random(xul_path, b"webdriver", 9);
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            lib_path_buf.push("XUL");
-            let xul_path = lib_path_buf.to_str().unwrap();
-            patch_binary_with_random(xul_path, b"webdriver", 9);
-        }
-    }
-}
+impl Firefox {}
 impl BrowserConfig for Firefox {
     type Capabilities = FirefoxCapabilities;
 
-    fn new(profile_path: &str, binary_path: Option<&str>) -> Self::Capabilities {
+    fn new(profile_path: &str) -> Self::Capabilities {
         let mut caps = DesiredCapabilities::firefox();
         let mut initial_args = get_firefox_args();
 
         fatal_unwrap_e!(caps.set_encoded_profile(profile_path), "Failed to set profile {}");
         let mut prefs = FirefoxPreferences::new();
-        let firefox_binary = fatal_unwrap!(binary_path, "Failed to get firefox binary path");
-
-        fatal_unwrap_e!(caps.set_firefox_binary(firefox_binary), "Failed to set firefox binary {}");
         // fatal_unwrap_e!(caps.set_headless(), "Failed to set headless {}");
 
         fatal_unwrap_e!(
@@ -125,8 +96,6 @@ impl BrowserConfig for Firefox {
         for arg in initial_args.iter() {
             fatal_unwrap_e!(caps.add_arg(*arg), "Failed to add arg {}");
         }
-        // Optimize, this is supposed to happen only once
-        Self::patch_xul_config(binary_path.unwrap());
         caps
     }
 }

@@ -89,7 +89,7 @@ impl DriverService for ChromeDriverService {
     type Param<'a> = &'a Vec<String>;
     type SessionInitializerType = ChromeSessionInitializer;
 
-    async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
+    async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str, browser_binary_path: Option<&str>) -> Self {
         patch_binary_with_random(driver_path, b"cdc_", 22);
         let mut cmd = Command::new(driver_path);
         cmd.arg(format!("--port={}", port));
@@ -179,6 +179,31 @@ pub struct GeckoDriverService {
 }
 
 impl GeckoDriverService {
+    fn patch_xul_library(binary_path: &str) {
+        let mut lib_path_buf = PathBuf::from(binary_path);
+        lib_path_buf.pop();
+
+        #[cfg(target_os = "windows")]
+        {
+            lib_path_buf.push("xul.dll");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            lib_path_buf.push("libxul.so");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            lib_path_buf.push("XUL");
+            let xul_path = lib_path_buf.to_str().unwrap();
+            patch_binary_with_random(xul_path, b"webdriver", 9);
+        }
+    }
     fn create_session_dirs(profile_path: &str) -> String {
         let current_dir = current_dir().unwrap();
         let mut b64_file_path = current_dir.clone();
@@ -210,7 +235,14 @@ impl DriverService for GeckoDriverService {
     type BrowserConfigType = Firefox;
     type Param<'a> = (&'a str, Range<u16>);
     type SessionInitializerType = GeckoSessionInitializer;
-    async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str) -> Self {
+    async fn new(port: u16, session_count: u16, driver_path: &str, profile_path: &str, browser_binary_path: Option<&str>) -> Self {
+        // Optimize, this is supposed to happen only once
+        match browser_binary_path {
+            Some(binary_path) => Self::patch_xul_library(binary_path),
+            None => {
+                fatal_assert!("No browser binary path provided!");
+            }
+        }
         const EXPECTED_OUTPUT: &str = "Listening on";
         let path_str = driver_path;
         let signal = Arc::new(Condvar::new());
