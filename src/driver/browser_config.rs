@@ -1,5 +1,4 @@
 use crate::driver::traits::BrowserConfig;
-use crate::utils::patch_binary_with_random;
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
 use std::fmt::format;
@@ -13,7 +12,7 @@ pub struct Chrome;
 impl BrowserConfig for Chrome {
     type Capabilities = ChromeCapabilities;
 
-    fn new(profile_path: &str) -> Self::Capabilities {
+    fn new(profile_path: &str, browser_binary_path: Option<&str>) -> Self::Capabilities {
         let mut caps = DesiredCapabilities::chrome();
         let initial_args = get_chrome_args();
         for arg in initial_args.iter() {
@@ -57,9 +56,11 @@ impl Firefox {}
 impl BrowserConfig for Firefox {
     type Capabilities = FirefoxCapabilities;
 
-    fn new(profile_path: &str) -> Self::Capabilities {
+    fn new(profile_path: &str, browser_binary_path: Option<&str>) -> Self::Capabilities {
         let mut caps = DesiredCapabilities::firefox();
         let mut initial_args = get_firefox_args();
+        let binary_path = fatal_unwrap!(browser_binary_path, "Failed to get firefox binary path");
+        fatal_unwrap_e!(caps.set_firefox_binary(binary_path), "Failed to set firefox binary {}");
 
         fatal_unwrap_e!(caps.set_encoded_profile(profile_path), "Failed to set profile {}");
         let mut prefs = FirefoxPreferences::new();

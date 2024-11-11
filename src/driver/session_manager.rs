@@ -118,11 +118,13 @@ where
         session_count: u16,
         driver_path: &str,
         profile_path: &str,
-        binary_path: Option<&str>,
+        browser_binary_path: Option<&str>,
     ) -> Self {
-        let service = ServiceType::new(driver_port, session_count, driver_path, profile_path, binary_path).await;
+        let service = ServiceType::new(driver_port, session_count, driver_path, profile_path, browser_binary_path).await;
         let params = service.session_params().await;
-        let sessions = ServiceType::SessionInitializerType::create_sessions(driver_host, driver_port, params, session_count).await;
+        let sessions =
+            ServiceType::SessionInitializerType::create_sessions(driver_host, driver_port, params, session_count, browser_binary_path)
+                .await;
         let pool = SessionPool::new(sessions);
         let session_pool = SessionManager {
             pool,

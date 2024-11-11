@@ -2,7 +2,7 @@ use crate::driver::session::DriverSession;
 
 pub trait BrowserConfig {
     type Capabilities: Into<thirtyfour::Capabilities>;
-    fn new(profile_path: &str) -> Self::Capabilities;
+    fn new(profile_path: &str, browser_binary_path: Option<&str>) -> Self::Capabilities;
 }
 
 pub trait DriverService {
@@ -22,5 +22,6 @@ pub trait SessionInitializer {
         port: u16,
         param: <Self::Service as DriverService>::Param<'a>,
         session_count: u16,
+        browser_binary_path: Option<&str>,
     ) -> Vec<DriverSession>;
 }

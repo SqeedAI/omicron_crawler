@@ -21,11 +21,11 @@ pub struct DriverSession {
 }
 
 impl DriverSession {
-    pub async fn new<T>(host: &str, port: &str, user_dir_param: &str) -> Self
+    pub async fn new<T>(host: &str, port: &str, user_dir_param: &str, browser_binary_path: Option<&str>) -> Self
     where
         T: BrowserConfig,
     {
-        let caps = T::new(user_dir_param);
+        let caps = T::new(user_dir_param, browser_binary_path);
         let driver = fatal_unwrap_e!(
             WebDriver::new(format!("http://{}:{}/", host, port), caps).await,
             "Failed to create session: {}"

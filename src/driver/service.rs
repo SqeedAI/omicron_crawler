@@ -223,6 +223,7 @@ impl GeckoDriverService {
             }
             encoded = base64_encode(file_content.as_slice());
             fatal_unwrap_e!(fs::write(b64_file_path.clone(), encoded.clone()), "Failed to write file {}");
+            info!("Wrote encoded profile file! size: {}", b64_file_path.metadata().unwrap().len());
         } else {
             encoded = fatal_unwrap_e!(fs::read_to_string(b64_file_path.clone()), "Failed to read file {}");
             info!("Found encoded profile file! size: {}", b64_file_path.metadata().unwrap().len());
