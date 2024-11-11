@@ -218,11 +218,12 @@ pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<Sear
         }
     };
     let url = format!("{}{}", domain_url, a_href);
+    let url = url.split(",").next().unwrap();
 
     results.push(SearchResult {
         name: name_span.text().await.unwrap(),
         title: title_span.text().await.unwrap(),
-        sales_url: url,
+        sales_url: url.to_string(),
     });
     Ok(())
 }
@@ -452,6 +453,7 @@ pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str
     let profile_picture_url = parse_profile_picture(driver).await;
 
     Ok(Profile {
+        sales_url: sales_profile_url.to_string(),
         profile_picture_url,
         name: name_span.text().await.unwrap().to_string(),
         url: linkedin_url,
