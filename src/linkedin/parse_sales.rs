@@ -14,6 +14,48 @@ use thirtyfour::error::WebDriverResult;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
 use thirtyfour::{By, Key, WebDriver, WebElement};
 
+//Optimize think about cases where String is moved but can be passed as a reference
+
+pub async fn send_mail_message(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+    info!("Detected in-mail input.");
+}
+
+pub async fn send_message_connection(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+    info!("Detected connection message input.");
+}
+pub async fn send_message(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+    let message_button = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[2]/section/div[1]/div[2]/button"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(message_button) => message_button,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find message button").unwrap())),
+    };
+    match message_button.click().await {
+        Ok(_) => {}
+        Err(_) => return Err(InteractionError(String::from_str("Failed to click message button").unwrap())),
+    }
+
+    let mail_form = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[9]/section/div[2]/section/div[2]/form[1]"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(mail_form) => mail_form,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find mail form").unwrap())),
+    };
+
+    let result = match mail_form.find(By::XPath("./div/input")).await {
+        Ok(_) => send_mail_message(driver, subject, body).await,
+        Err(_) => send_message_connection(driver, subject, body).await,
+    };
+    result
+}
 pub async fn set_keyword_search(driver_session: &DriverSession, keywords: String) -> CrawlerResult<()> {
     let input_element = match driver_session
         .find_until_loaded(By::XPath("//*[@id='global-typeahead-search-input']"), Duration::from_secs(5))
