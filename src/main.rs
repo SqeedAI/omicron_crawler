@@ -9,7 +9,7 @@ use omicron_crawler::env::get_env;
 use omicron_crawler::fatal_assert;
 use omicron_crawler::fatal_unwrap_e;
 use omicron_crawler::linkedin::crawler::Crawler;
-use omicron_crawler::linkedin::enums::Functions::Engineering;
+use omicron_crawler::linkedin::enums::String::Engineering;
 use omicron_crawler::logger::Logger;
 use std::time::Duration;
 
@@ -39,7 +39,7 @@ async fn main() {
     let crawler = Crawler::new(session).await;
     fatal_unwrap_e!(
         crawler
-            .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
+            .set_search_filters(Some("Java".to_string()), None, None, Some("Slovakia".to_string()))
             .await,
         "{}"
     );

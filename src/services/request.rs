@@ -5,13 +5,13 @@ use log::warn;
 use omicron_crawler::driver::session_manager::{SessionManager, SessionPool};
 use omicron_crawler::errors::CrawlerError;
 use omicron_crawler::linkedin::crawler::Crawler;
-use omicron_crawler::linkedin::enums::Functions;
+use omicron_crawler::linkedin::enums::String;
 use std::cmp::min;
 use std::thread;
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Search {
-    function: Functions,
+    function: String,
     job_title: String,
     geography: Option<String>,
 }

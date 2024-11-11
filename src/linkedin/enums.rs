@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::Display;
 #[derive(serde::Deserialize, Debug)]
-pub enum Functions {
+pub enum String {
     Accounting,
     Administrative,
     ArtsAndDesign,
@@ -29,34 +29,34 @@ pub enum Functions {
     CustomerSuccessAndSupport,
 }
 
-impl Display for Functions {
+impl Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Functions::Accounting => "Accounting",
-            Functions::Administrative => "Administrative",
-            Functions::ArtsAndDesign => "Arts and Design",
-            Functions::BusinessDevelopment => "Business Development",
-            Functions::CommunityAndSocialServices => "Community and Social Services",
-            Functions::Consulting => "Consulting",
-            Functions::Education => "Education",
-            Functions::Engineering => "Engineering",
-            Functions::Entrepreneurship => "Entrepreneurship",
-            Functions::Finance => "Finance",
-            Functions::HealthServices => "Health Services",
-            Functions::HumanResources => "Human Resources",
-            Functions::InformationTechnology => "Information Technology",
-            Functions::Legal => "Legal",
-            Functions::Marketing => "Marketing",
-            Functions::MediaAndCommunications => "Media and Communications",
-            Functions::Operations => "Operations",
-            Functions::ProductManagement => "Product Management",
-            Functions::ProgramAndProjectManagement => "Program and Project Management",
-            Functions::Purchasing => "Purchasing",
-            Functions::QualityAssurance => "Quality Assurance",
-            Functions::RealEstate => "Real Estate",
-            Functions::Research => "Research",
-            Functions::Sales => "Sales",
-            Functions::CustomerSuccessAndSupport => "Customer Success and Support",
+            String::Accounting => "Accounting",
+            String::Administrative => "Administrative",
+            String::ArtsAndDesign => "Arts and Design",
+            String::BusinessDevelopment => "Business Development",
+            String::CommunityAndSocialServices => "Community and Social Services",
+            String::Consulting => "Consulting",
+            String::Education => "Education",
+            String::Engineering => "Engineering",
+            String::Entrepreneurship => "Entrepreneurship",
+            String::Finance => "Finance",
+            String::HealthServices => "Health Services",
+            String::HumanResources => "Human Resources",
+            String::InformationTechnology => "Information Technology",
+            String::Legal => "Legal",
+            String::Marketing => "Marketing",
+            String::MediaAndCommunications => "Media and Communications",
+            String::Operations => "Operations",
+            String::ProductManagement => "Product Management",
+            String::ProgramAndProjectManagement => "Program and Project Management",
+            String::Purchasing => "Purchasing",
+            String::QualityAssurance => "Quality Assurance",
+            String::RealEstate => "Real Estate",
+            String::Research => "Research",
+            String::Sales => "Sales",
+            String::CustomerSuccessAndSupport => "Customer Success and Support",
         };
         write!(f, "{}", s)
     }
