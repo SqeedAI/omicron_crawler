@@ -192,8 +192,15 @@ impl GeckoDriverService {
 
         #[cfg(target_os = "linux")]
         {
+            // First, go up two directories: /usr/bin/firefox -> /usr
+            lib_path_buf.pop(); // remove 'firefox'
+            lib_path_buf.pop(); // remove 'bin'
+            lib_path_buf.push("lib"); // Then go into lib/firefox
+            lib_path_buf.push("firefox");
+            // Finally add libxul.so
             lib_path_buf.push("libxul.so");
             let xul_path = lib_path_buf.to_str().unwrap();
+            info!("Patching libxul.so with webdriver, {}", xul_path);
             patch_binary_with_random(xul_path, b"webdriver", 9);
         }
 
@@ -215,9 +222,10 @@ impl GeckoDriverService {
         let encoded;
         if !b64_file_path.exists() {
             let target_file = current_dir.join(profile_path);
+            println!("Read profile file from {}", target_file.to_str().unwrap());
             let file_content = fatal_unwrap_e!(fs::read(target_file), "Failed to read file {}");
             if file_content.len() >= 4 && file_content[0..4] == [0x50, 0x4B, 0x03, 0x04] {
-                info!("Found zipped profile file! size: {}", file_content.len());
+                info!("Verified zipped profile file! size: {}", file_content.len());
             } else {
                 fatal_assert!("Invalid zip file");
             }
