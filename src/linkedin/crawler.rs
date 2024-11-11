@@ -1,8 +1,9 @@
 use crate::driver::session_manager::SessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::enums::Functions;
-use crate::linkedin::parse_sales::{parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search};
+use crate::linkedin::parse_sales::{
+    parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search, set_keyword_search,
+};
 use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
 
@@ -14,17 +15,33 @@ impl<'a> Crawler<'a> {
     pub async fn new(proxy: SessionProxy<'a>) -> Self {
         Self { proxy }
     }
-    pub async fn set_search_filters(&self, function: Functions, job_title: String, geography: Option<String>) -> CrawlerResult<()> {
+    pub async fn set_search_filters(
+        &self,
+        keywords: Option<String>,
+        function: Option<String>,
+        job_title: Option<String>,
+        geography: Option<String>,
+    ) -> CrawlerResult<()> {
         let driver_ext = self.proxy.session.as_ref().unwrap();
         match driver_ext.driver.goto("https://www.linkedin.com/sales/search/people").await {
             Ok(_) => {}
             Err(e) => return Err(DriverError(format!("Failed to go to linkedin {}", e))),
         }
-        set_function_search(driver_ext, function).await?;
-        set_job_title_search(driver_ext, job_title).await?;
+
+        if let Some(function) = function {
+            set_function_search(driver_ext, function).await?;
+        }
+        if let Some(job_title) = job_title {
+            set_job_title_search(driver_ext, job_title).await?;
+        }
+
         if let Some(geography) = geography {
             set_geography_search(driver_ext, geography).await?
         };
+
+        if let Some(key_words) = keywords {
+            set_keyword_search(driver_ext, key_words).await?;
+        }
         Ok(())
     }
     pub async fn test_detection(&self) {

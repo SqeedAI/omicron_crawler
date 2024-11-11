@@ -1,7 +1,6 @@
 use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::{InteractionError, ParseError};
 use crate::errors::{CrawlerError, CrawlerResult};
-use crate::linkedin::enums::Functions;
 use crate::linkedin::profiles;
 use crate::linkedin::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
 use crate::utils::get_domain_url;
@@ -15,7 +14,25 @@ use thirtyfour::error::WebDriverResult;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
 use thirtyfour::{By, Key, WebDriver, WebElement};
 
-pub async fn set_function_search(driver: &DriverSession, function: Functions) -> CrawlerResult<()> {
+pub async fn set_keyword_search(driver_session: &DriverSession, keywords: String) -> CrawlerResult<()> {
+    let input_element = match driver_session
+        .find_until_loaded(By::XPath("//*[@id='global-typeahead-search-input']"), Duration::from_secs(5))
+        .await
+    {
+        Ok(input_element) => input_element,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find input element").unwrap())),
+    };
+    match input_element.click().await {
+        Ok(_) => {}
+        Err(_) => return Err(InteractionError(String::from_str("Failed to click input element").unwrap())),
+    }
+    input_element.send_keys(keywords.to_string()).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    input_element.send_keys(Key::Enter).await.unwrap();
+    Ok(())
+}
+
+pub async fn set_function_search(driver: &DriverSession, function: String) -> CrawlerResult<()> {
     let function_button = match driver
         .find_until_loaded(
             By::XPath("/html/body/main/div[1]/div[1]/div[2]/div[1]/form/div/div[4]/fieldset[2]/div/fieldset[1]/div/button"),
@@ -189,10 +206,13 @@ pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<Sear
     };
 
     let title_span = match search_entry.find(By::XPath(".//span[@data-anonymize='title']")).await {
-        Ok(title_span) => title_span,
+        Ok(title_span) => title_span.text().await.unwrap_or_else(|_| {
+            warn!("Failed to get title span text");
+            "".to_string()
+        }),
         Err(_) => {
-            error!("Failed to find title span");
-            return Err(ParseError(String::from_str("Failed to find title span").unwrap()));
+            warn!("Failed to find title span");
+            "".to_string()
         }
     };
 
@@ -222,7 +242,7 @@ pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<Sear
 
     results.push(SearchResult {
         name: name_span.text().await.unwrap(),
-        title: title_span.text().await.unwrap(),
+        title: title_span,
         sales_url: url.to_string(),
     });
     Ok(())
