@@ -4,7 +4,7 @@ meta {
   seq: 3
 }
 
-get {
+post {
   url: 127.0.0.1:8080/search
   body: json
   auth: none
@@ -12,8 +12,7 @@ get {
 
 body:json {
   {
-    "function": "Engineering",
-    "job_title": "Software Engineer",
+    "keywords": "Java",
     "geography": "Slovakia"
   }
 }

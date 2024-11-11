@@ -1,18 +1,18 @@
 use crate::get_driver_session_manager;
 use actix_web::web::{Data, Json};
-use actix_web::{get, HttpResponse};
+use actix_web::{get, post, HttpResponse};
 use log::warn;
 use omicron_crawler::driver::session_manager::{SessionManager, SessionPool};
 use omicron_crawler::errors::CrawlerError;
 use omicron_crawler::linkedin::crawler::Crawler;
-use omicron_crawler::linkedin::enums::String;
 use std::cmp::min;
 use std::thread;
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Search {
-    function: String,
-    job_title: String,
+    keywords: Option<String>,
+    function: Option<String>,
+    job_title: Option<String>,
     geography: Option<String>,
 }
 
@@ -21,7 +21,7 @@ pub struct Url {
     sales_url: String,
 }
 
-#[get("/search")]
+#[post("/search")]
 pub async fn search(search_params: Json<Search>) -> HttpResponse {
     let driver_session_manager = get_driver_session_manager().await;
     let pool = &driver_session_manager.pool;
@@ -35,7 +35,12 @@ pub async fn search(search_params: Json<Search>) -> HttpResponse {
     };
 
     match crawler
-        .set_search_filters(search_request.function, search_request.job_title, search_request.geography)
+        .set_search_filters(
+            search_request.keywords,
+            search_request.function,
+            search_request.job_title,
+            search_request.geography,
+        )
         .await
     {
         Ok(results) => results,
@@ -48,7 +53,7 @@ pub async fn search(search_params: Json<Search>) -> HttpResponse {
     HttpResponse::Ok().json(results)
 }
 
-#[get("/profiles")]
+#[post("/profiles")]
 pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
     let url_request = url_requests.into_inner();
     let parsed_profiles = thread::scope(|s| {
