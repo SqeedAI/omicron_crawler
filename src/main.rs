@@ -24,28 +24,27 @@ async fn main() {
         warn!("Failed to load .env file, will use defaults!{}", e);
     }
     let env = get_env().await;
-    GeckoDriverService::create_session_dirs(&env.profile_path);
-    // let manager: SessionManager<GeckoDriverService> = SessionManager::new(
-    //     env.driver_host.as_str(),
-    //     env.driver_port,
-    //     env.driver_session_count,
-    //     env.driver_path.as_str(),
-    //     env.profile_path.as_str(),
-    //     env.browser_binary_path.as_deref(),
-    // )
-    // .await;
-    // let pool = &manager.pool;
-    // let session = pool.acquire().unwrap();
-    // info!("Acquired session, starting crawler...");
-    // let crawler = Crawler::new(session).await;
-    // fatal_unwrap_e!(
-    //     crawler
-    //         .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
-    //         .await,
-    //     "{}"
-    // );
-    // let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
-    // let first = results.first().unwrap();
-    // let profile = crawler.parse_profile(&first.sales_url).await;
-    // println!("{}", fatal_unwrap_e!(profile, "{}"));
+    let manager: SessionManager<GeckoDriverService> = SessionManager::new(
+        env.driver_host.as_str(),
+        env.driver_port,
+        env.driver_session_count,
+        env.driver_path.as_str(),
+        env.profile_path.as_str(),
+        env.browser_binary_path.as_deref(),
+    )
+    .await;
+    let pool = &manager.pool;
+    let session = pool.acquire().unwrap();
+    info!("Acquired session, starting crawler...");
+    let crawler = Crawler::new(session).await;
+    fatal_unwrap_e!(
+        crawler
+            .set_search_filters(Engineering, "Software Engineer".to_string(), Some("Slovakia".to_string()))
+            .await,
+        "{}"
+    );
+    let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
+    let first = results.first().unwrap();
+    let profile = crawler.parse_profile(&first.sales_url).await;
+    println!("{}", fatal_unwrap_e!(profile, "{}"));
 }
