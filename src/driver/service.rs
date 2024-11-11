@@ -192,10 +192,10 @@ impl GeckoDriverService {
 
         #[cfg(target_os = "linux")]
         {
-            // First, go up two directories: /usr/bin/firefox -> /usr
-            lib_path_buf.pop(); // remove 'firefox'
-            lib_path_buf.pop(); // remove 'bin'
-            lib_path_buf.push("lib"); // Then go into lib/firefox
+            // First, go up one directory from /usr/bin to /usr
+            lib_path_buf.pop();
+            // Then go into lib/firefox
+            lib_path_buf.push("lib");
             lib_path_buf.push("firefox");
             // Finally add libxul.so
             lib_path_buf.push("libxul.so");
