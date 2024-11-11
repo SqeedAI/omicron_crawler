@@ -3,6 +3,6 @@ extern crate log;
 #[macro_use]
 extern crate omicron_crawler;
 #[cfg(test)]
-mod driver_tests;
+mod chrome_driver_tests;
 #[cfg(test)]
-mod parsing_tests;
+mod chrome_parsing_tests;
