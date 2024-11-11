@@ -1,3 +1,5 @@
+use std::{fs, mem};
+
 pub fn generate_random_string(length: usize) -> String {
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
@@ -10,40 +12,30 @@ pub fn get_domain_url(url: &str) -> String {
     url.split_at(indices[2].0).0.to_string()
 }
 
-pub fn log_level_from_env() -> log::LevelFilter {
-    match std::env::var("LOG_LEVEL") {
-        Ok(level) => match level.as_str() {
-            "TRACE" => log::LevelFilter::Trace,
-            "DEBUG" => log::LevelFilter::Debug,
-            "INFO" => log::LevelFilter::Info,
-            "WARN" => log::LevelFilter::Warn,
-            "ERROR" => log::LevelFilter::Error,
-            _ => log::LevelFilter::Info,
-        },
-        Err(_) => log::LevelFilter::Info,
+pub fn patch_binary_with_random(binary_path: &str, pattern: &[u8], random_string_size: usize) {
+    let mut binary = fatal_unwrap_e!(fs::read(binary_path), "Failed to read target binary for patching {}");
+    let pattern = pattern;
+    let new_string = generate_random_string(random_string_size);
+    // TODO use strings instead of bytes
+    let mut matches = Vec::with_capacity(3);
+    for (index, window) in binary.windows(pattern.len()).enumerate() {
+        if window == pattern {
+            matches.push(index);
+        }
     }
-}
+    if matches.len() == 0 {
+        info!("no pater matches found, no need to patch!");
+        return;
+    }
 
-pub fn host_data_from_env() -> (String, u16) {
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
-    (host, port)
-}
+    let first_match = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(matches[0]), random_string_size, random_string_size) };
+    info!("Replacing {} with {}", first_match, new_string);
+    mem::forget(first_match);
 
-pub fn driver_path_from_env() -> String {
-    std::env::var("DRIVER_PATH").unwrap_or_else(|_| "./drivers/chromedriver.exe".to_string())
-}
-
-pub fn driver_host_from_env() -> String {
-    std::env::var("DRIVER_HOST").unwrap_or_else(|_| "localhost".to_string())
-}
-
-pub fn driver_port_from_env() -> String {
-    std::env::var("DRIVER_PORT").unwrap_or_else(|_| "9515".to_string())
-}
-pub fn driver_session_count_from_env() -> u16 {
-    std::env::var("DRIVER_SESSION_COUNT")
-        .unwrap_or_else(|_| "8".to_string())
-        .parse::<u16>()
-        .unwrap()
+    for index in matches {
+        let mut pattern_str = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(index), random_string_size, random_string_size) };
+        pattern_str.replace_range(0..random_string_size, &new_string);
+        mem::forget(pattern_str);
+    }
+    fs::write(binary_path, binary).unwrap();
 }

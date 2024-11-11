@@ -1,13 +1,11 @@
-use actix_web::rt::task;
-use actix_web::web::Json;
-use actix_web::{get, post, HttpResponse};
+use crate::get_driver_session_manager;
+use actix_web::web::{Data, Json};
+use actix_web::{get, HttpResponse};
 use log::warn;
-use omicron_crawler::driver_pool::driver_session_pool;
-use omicron_crawler::driver_service::driver_service;
-use omicron_crawler::errors::{CrawlerError, CrawlerResult};
+use omicron_crawler::driver::session_manager::{SessionManager, SessionPool};
+use omicron_crawler::errors::CrawlerError;
 use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::linkedin::enums::Functions;
-use omicron_crawler::utils::{driver_host_from_env, driver_port_from_env};
 use std::cmp::min;
 use std::thread;
 
@@ -25,8 +23,10 @@ pub struct Url {
 
 #[get("/search")]
 pub async fn search(search_params: Json<Search>) -> HttpResponse {
+    let driver_session_manager = get_driver_session_manager().await;
+    let pool = &driver_session_manager.pool;
     let search_request = search_params.into_inner();
-    let session = driver_session_pool().await.acquire();
+    let session = pool.acquire();
     let crawler = match session {
         Some(session) => Crawler::new(session).await,
         None => {
@@ -64,7 +64,9 @@ pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 tasks.push(s.spawn(move || {
                     rt.block_on(async move {
-                        let session = driver_session_pool().await.acquire();
+                        let driver_session_manager = get_driver_session_manager().await;
+                        let pool = &driver_session_manager.pool;
+                        let session = pool.acquire();
                         let crawler = match session {
                             Some(session) => Crawler::new(session).await,
                             None => {
