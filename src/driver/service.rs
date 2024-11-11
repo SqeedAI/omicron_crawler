@@ -211,7 +211,7 @@ impl GeckoDriverService {
             patch_binary_with_random(xul_path, b"webdriver", 9);
         }
     }
-    fn create_session_dirs(profile_path: &str) -> String {
+    pub fn create_session_dirs(profile_path: &str) -> String {
         let current_dir = current_dir().unwrap();
         let mut b64_file_path = current_dir.clone();
         b64_file_path.push("sessions");
@@ -259,6 +259,7 @@ impl DriverService for GeckoDriverService {
         for i in 0..session_count {
             let port = port + i;
             let mut cmd = Command::new(path_str);
+            info!("Driver set to path: {}", driver_path);
             let mut gecko_driver = cmd.arg("--port").arg(port.to_string()).stdout(Stdio::piped()).spawn().unwrap();
             let stdout = gecko_driver.stdout.take().unwrap();
             results.push(gecko_driver);
