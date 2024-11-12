@@ -58,7 +58,7 @@ if ! grep -q 'export PATH="$HOME/.cargo/bin:$PATH"' ~/.bashrc; then
     echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
 fi
 
-source ~/.bashrc
+source "$HOME/.cargo/env"
 
 if ! rustup toolchain install stable; then
   echo "failed to install rust stable toolchain" >&2
