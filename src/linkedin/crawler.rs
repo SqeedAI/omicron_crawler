@@ -2,7 +2,7 @@ use crate::driver::session_manager::SessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::parse_sales::{
-    parse_sales_profile, parse_search, set_function_search, set_geography_search, set_job_title_search, set_keyword_search,
+    parse_sales_profile, parse_search, send_message, set_function_search, set_geography_search, set_job_title_search, set_keyword_search,
 };
 use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
@@ -43,6 +43,10 @@ impl<'a> Crawler<'a> {
             set_keyword_search(driver_ext, key_words).await?;
         }
         Ok(())
+    }
+    pub async fn send_message(&self, sales_url: &str, subject: &str, body: &str) -> CrawlerResult<()> {
+        let driver_ext = self.proxy.session.as_ref().unwrap();
+        send_message(driver_ext, sales_url, subject, body).await
     }
     pub async fn test_detection(&self) {
         let driver_ext = self.proxy.session.as_ref().unwrap();

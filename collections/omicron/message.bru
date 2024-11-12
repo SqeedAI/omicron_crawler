@@ -1,0 +1,31 @@
+meta {
+  name: message
+  type: http
+  seq: 5
+}
+
+post {
+  url: 127.0.0.1:8080/message
+  body: json
+  auth: none
+}
+
+body:json {
+  [
+    {
+      "sales_url": "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0",
+      "subject": "Crawler service test",
+      "body": "12345"
+    },
+    {
+      "sales_url": "https://www.linkedin.com/sales/lead/ACwAABxmlS0BX-0dGZnBanFxGTwdmsbLIuexmA8",
+      "subject": "Crawler service test",
+      "body": "12345"
+    },
+    {
+      "sales_url": "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw",
+      "subject": "Crawler service test",
+      "body": "12345"
+    }
+  ]
+}
