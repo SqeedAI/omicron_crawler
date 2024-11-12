@@ -1,12 +1,7 @@
 #!/bin/bash
+profile_link="https://0x0.st/XkAg.b64"
 
-# Take OneDrive link as input
-onedrive_link="https://1drv.ms/u/c/a77974c33a34d9bb/ERyj4V2-DkhCmwJ45ytPsCMBotTwChnIKDTdUbyPHmoAeA?e=rXAUj8"
-
-# Base64 encode the entire URL
-encoded_id=$(echo -n "$onedrive_link" | base64)
-
-# Create the direct download link
-direct_link="https://api.onedrive.com/v1.0/shares/$encoded_id/root/content"
-
-echo "$direct_link"
+if ! curl -L $profile_link -o ./sessions/encoded.b64 ; then
+    echo "Failed to download firefox profile"
+    exit 1
+fi
