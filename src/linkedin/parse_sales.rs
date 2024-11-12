@@ -84,7 +84,7 @@ pub async fn send_message(driver: &DriverSession, profile_sales_url: &str, subje
         return Err(InteractionError(format!("Failed to click send message button {}", e)));
     }
     /// TODO More robust way to wait for message to be sent
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::sleep(Duration::from_millis(700)).await;
 
     Ok(())
 }
