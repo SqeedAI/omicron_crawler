@@ -36,24 +36,15 @@ async fn main() {
     let pool = &manager.pool;
     let session = pool.acquire().unwrap();
     let crawler = Crawler::new(session).await;
+
     fatal_unwrap_e!(
         crawler
-            .send_message(
-                "https://www.linkedin.com/sales/lead/ACwAABxmlS0BX-0dGZnBanFxGTwdmsbLIuexmA8,NAME_SEARCH,EB6r",
-                "Crawler subject test",
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas vel mauris consequat, sollicitudin quam vel, consectetur lorem. In congue dui eu enim porta sollicitudin. Aliquam vitae lacinia nunc, quis pretium ex. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Aliquam et risus et dolor commodo sollicitudin tempor et nisl. Sed nec lorem ultrices, mollis tortor quis, iaculis dui. Aenean vel iaculis sem. Proin faucibus erat vel tellus condimentum venenatis. Nullam vel lacus sit amet augue condimentum dapibus. Vestibulum in nisi convallis, volutpat turpis ut, suscipit orci. Quisque eu neque tellus. Suspendisse risus nisi, posuere vel pellentesque a, efficitur nec augue. In metus dui, rhoncus non justo vitae, posuere cursus tellus. ",
-            )
+            .set_search_filters(Some("Java".to_string()), None, None, Some("Slovakia".to_string()))
             .await,
         "{}"
     );
-    // fatal_unwrap_e!(
-    //     crawler
-    //         .set_search_filters(Some("Java".to_string()), None, None, Some("Slovakia".to_string()))
-    //         .await,
-    //     "{}"
-    // );
-    // let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
-    // let first = results.first().unwrap();
-    // let profile = crawler.parse_profile(&first.sales_url).await;
-    // println!("{}", fatal_unwrap_e!(profile, "{}"));
+    let results = fatal_unwrap_e!(crawler.parse_search().await, "{}");
+    let first = results.first().unwrap();
+    let profile = crawler.parse_profile(&first.sales_url).await;
+    println!("{}", fatal_unwrap_e!(profile, "{}"));
 }
