@@ -1,5 +1,5 @@
 use crate::driver::session::DriverSession;
-use crate::errors::CrawlerError::{InteractionError, ParseError};
+use crate::errors::CrawlerError::{DriverError, InteractionError, ParseError};
 use crate::errors::{CrawlerError, CrawlerResult};
 use crate::linkedin::profiles;
 use crate::linkedin::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
@@ -13,17 +13,37 @@ use thirtyfour::common::action::KeyAction::KeyDown;
 use thirtyfour::error::WebDriverResult;
 use thirtyfour::prelude::{ElementQueryable, ElementWaitable};
 use thirtyfour::{By, Key, WebDriver, WebElement};
-
+use tokio::time::Sleep;
 //Optimize think about cases where String is moved but can be passed as a reference
 
-pub async fn send_mail_message(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+pub async fn set_subject(mail_form: &WebElement, subject: &str) -> CrawlerResult<()> {
     info!("Detected in-mail input.");
+    let subject_element = match mail_form.find(By::XPath("./div/input")).await {
+        Ok(subject) => subject,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find subject input").unwrap())),
+    };
+
+    if let Err(_) = subject_element.send_keys(subject.to_string()).await {
+        return Err(InteractionError(String::from_str("Failed to send keys to subject input").unwrap()));
+    }
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    Ok(())
 }
 
-pub async fn send_message_connection(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+pub async fn set_message(mail_form: &WebElement, body: &str) -> CrawlerResult<()> {
     info!("Detected connection message input.");
+    let text_area = match mail_form.find(By::XPath("./div/section/textarea")).await {
+        Ok(text_area) => text_area,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find text area").unwrap())),
+    };
+    text_area.send_keys(body.to_string()).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    Ok(())
 }
-pub async fn send_message(driver: &DriverSession, subject: String, body: String) -> CrawlerResult<()> {
+pub async fn send_message(driver: &DriverSession, profile_sales_url: &str, subject: &str, body: &str) -> CrawlerResult<()> {
+    if let Err(result) = driver.driver.get(profile_sales_url).await {
+        return Err(DriverError(format!("Failed to get sales page: {}", result)));
+    }
     let message_button = match driver
         .find_until_loaded(
             By::XPath("/html/body/main/div[1]/div[3]/div/div/div[1]/div/div/section[1]/section[1]/div[2]/section/div[1]/div[2]/button"),
@@ -50,11 +70,23 @@ pub async fn send_message(driver: &DriverSession, subject: String, body: String)
         Err(_) => return Err(ParseError(String::from_str("Failed to find mail form").unwrap())),
     };
 
-    let result = match mail_form.find(By::XPath("./div/input")).await {
-        Ok(_) => send_mail_message(driver, subject, body).await,
-        Err(_) => send_message_connection(driver, subject, body).await,
+    if let Err(_) = set_subject(&mail_form, subject).await {
+        info!("No subject input found");
     };
-    result
+
+    set_message(&mail_form, body).await?;
+
+    let send_message_button = match mail_form.find(By::XPath("./fieldset/section/div/button[2]")).await {
+        Ok(send_message_button) => send_message_button,
+        Err(_) => return Err(ParseError(String::from_str("Failed to find send message button").unwrap())),
+    };
+    if let Err(e) = send_message_button.click().await {
+        return Err(InteractionError(format!("Failed to click send message button {}", e)));
+    }
+    /// TODO More robust way to wait for message to be sent
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    Ok(())
 }
 pub async fn set_keyword_search(driver_session: &DriverSession, keywords: String) -> CrawlerResult<()> {
     let input_element = match driver_session

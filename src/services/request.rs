@@ -21,6 +21,39 @@ pub struct Url {
     sales_url: String,
 }
 
+#[derive(serde::Deserialize, Debug)]
+pub struct Message {
+    sales_url: String,
+    subject: String,
+    body: String,
+}
+
+// TODO Chunk it like with search and use parallelism
+// TODO Shouldn't fail if one fails
+#[post("/message")]
+pub async fn message(message: Json<Vec<Message>>) -> HttpResponse {
+    let driver_session_manager = get_driver_session_manager().await;
+    let pool = &driver_session_manager.pool;
+    let session = pool.acquire();
+    let message_data = message.into_inner();
+    let crawler = match session {
+        Some(session) => Crawler::new(session).await,
+        None => {
+            return HttpResponse::ServiceUnavailable().body("No free crawlers available, try again later");
+        }
+    };
+
+    for message in message_data {
+        let result = crawler
+            .send_message(message.sales_url.as_str(), message.subject.as_str(), message.body.as_str())
+            .await;
+        if let Err(e) = result {
+            return HttpResponse::InternalServerError().body(format!("Failed to send mail {}", e));
+        }
+    }
+    HttpResponse::Ok().body("")
+}
+
 #[post("/search")]
 pub async fn search(search_params: Json<Search>) -> HttpResponse {
     let driver_session_manager = get_driver_session_manager().await;

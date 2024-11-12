@@ -1,7 +1,7 @@
 pub mod services;
 
 use crate::services::hello;
-use crate::services::request::{profiles, search};
+use crate::services::request::{message, profiles, search};
 use actix_web::{App, HttpServer};
 use omicron_crawler::driver::service::GeckoDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     Logger::init(env.log_level);
     get_driver_session_manager().await;
 
-    let result = HttpServer::new(|| App::new().service(hello).service(search).service(profiles))
+    let result = HttpServer::new(|| App::new().service(hello).service(search).service(profiles).service(message))
         .bind((env.host.as_str(), env.port))?
         .system_exit()
         .run()
