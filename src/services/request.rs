@@ -91,7 +91,7 @@ pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
     let url_request = url_requests.into_inner();
     let parsed_profiles = thread::scope(|s| {
         let mut response_profiles = Vec::new();
-        let chunk_size = 2;
+        let chunk_size = 1;
         let mut offset = 0;
         let end = url_request.len();
         let mut tasks = Vec::with_capacity(chunk_size);
