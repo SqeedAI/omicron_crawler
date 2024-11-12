@@ -49,9 +49,9 @@ if ! sudo chmod 777 /usr/lib/firefox/libxul.so; then
   exit 1
 fi
 
-if ! sudo apt install rustup; then
-  echo "failed to install rustup" >&2
-  exit 1
+if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+    echo "failed to install rustup" >&2
+    exit 1
 fi
 
 if ! rustup toolchain install stable; then
