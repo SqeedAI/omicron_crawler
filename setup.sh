@@ -44,6 +44,11 @@ if ! sudo apt install firefox; then
   exit 1
 fi
 
+if ! sudo chmod 777 /usr/lib/firefox/libxul.so; then
+  echo "failed to set xul permissions" >&2
+  exit 1
+fi
+
 if ! sudo apt install rustup; then
   echo "failed to install rustup" >&2
   exit 1
@@ -69,6 +74,11 @@ if ! curl -L $profile_link -o ./sessions/encoded.b64 ; then
     exit 1
 fi
 
+if ! sudo chmod 777 ./sessions/encoded.b64; then
+    echo "Failed to set permissions for encoded.b64" >&2
+    exit 1
+fi
+
 temp_file=$(mktemp)
 
 if ! curl -L "https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz" -o "$temp_file"; then
@@ -79,6 +89,11 @@ fi
 if ! tar -xvzf "$temp_file" -C ./drivers; then
     echo "Failed to extract geckodriver" >&2
     exit 1
+fi
+
+if ! sudo chmod 777 ./drivers/geckodriver; then
+  echo "failed to set geckodriver permissions" >&2
+  exit 1
 fi
 
 trap 'rm -f "$temp_file"' EXIT
