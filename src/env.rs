@@ -125,14 +125,14 @@ pub fn profile_path(browser: Browser) -> String {
 pub fn load_env() {
     #[cfg(target_os = "windows")]
     {
-        if let Err(e) = dotenvy::from_filename(".env-windows").expect("Failed to load windows.env file") {
+        if let Err(e) = dotenvy::from_filename(".env-windows") {
             warn!("Failed to load .env file, will use defaults!{}", e);
         }
     }
 
     #[cfg(target_os = "linux")]
     {
-        if let Err(e) = dotenvy::from_filename(".env-linux").expect("Failed to load windows.env file") {
+        if let Err(e) = dotenvy::from_filename(".env-linux") {
             warn!("Failed to load .env file, will use defaults!{}", e);
         }
     }
