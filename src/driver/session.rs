@@ -46,9 +46,8 @@ impl DriverSession {
         Err(WebDriverError::Timeout("element not found. Timed out!".to_string()))
     }
 
-    pub async fn quit(&self) -> WebDriverResult<()> {
-        let driver = unsafe { std::ptr::read(&self.driver) };
-        match driver.quit().await {
+    pub async fn quit(self) -> WebDriverResult<()> {
+        match self.driver.quit().await {
             Ok(_) => {
                 info!("Quitting session");
                 Ok(())
