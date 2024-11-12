@@ -54,8 +54,8 @@ if ! sudo apt install rustup; then
   exit 1
 fi
 
-if ! rustup install toolchain stable; then
-  echo "failed to install rust stable toolchainm" >&2
+if ! rustup toolchain install stable; then
+  echo "failed to install rust stable toolchain" >&2
   exit 1
 fi
 
