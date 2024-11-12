@@ -122,6 +122,22 @@ pub fn profile_path(browser: Browser) -> String {
     }
 }
 
+pub fn load_env() {
+    #[cfg(target_os = "windows")]
+    {
+        if let Err(e) = dotenvy::from_filename(".env-windows").expect("Failed to load windows.env file") {
+            warn!("Failed to load .env file, will use defaults!{}", e);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Err(e) = dotenvy::from_filename(".env-linux").expect("Failed to load windows.env file") {
+            warn!("Failed to load .env file, will use defaults!{}", e);
+        }
+    }
+}
+
 pub async fn get_env() -> &'static Env {
     let browser = env_browser();
     let driver_path = driver_path(browser);
