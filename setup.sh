@@ -1,5 +1,5 @@
 #!/bin/bash
-profile_link="https://0x0.st/XkAg.b64"
+profile_link="https://0x0.st/Xk9z.b64"
 
 if ! mkdir -p ./sessions ./drivers 2>/dev/null; then
     echo "Failed to create necessary directories" >&2

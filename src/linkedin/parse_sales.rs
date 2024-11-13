@@ -472,9 +472,27 @@ pub async fn parse_experience_entry(experience_entry: WebElement, result: &mut V
         }
     };
 
-    let time_text = time.text().await.unwrap();
-    let interval = Interval::from_str(time_text.as_str(), "–").unwrap();
-    let title = job_title.text().await.unwrap();
+    let time_text = match time.text().await {
+        Ok(time_text) => time_text,
+        Err(_) => {
+            warn!("Failed to get experience duration text");
+            return;
+        }
+    };
+    let interval = match Interval::from_str(time_text.as_str(), "–") {
+        Ok(interval) => interval,
+        Err(_) => {
+            warn!("Failed to parse experience duration");
+            return;
+        }
+    };
+    let title = match job_title.text().await {
+        Ok(title) => title,
+        Err(_) => {
+            warn!("Failed to get job title text");
+            return;
+        }
+    };
     result.push(Experience { position: title, interval });
 }
 

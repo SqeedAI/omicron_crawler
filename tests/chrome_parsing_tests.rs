@@ -50,6 +50,7 @@ async fn test_parse_1() {
             assert_eq!(education[0].title, "University of Zilina");
             assert_eq!(education[0].field, "Applied Computer Science");
             assert_eq!(education[0].degree, "PhD");
+            println!("{}", education[0].interval);
         }
         None => {
             assert!(false, "No education found");
