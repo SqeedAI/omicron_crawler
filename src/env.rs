@@ -52,10 +52,8 @@ pub fn env_log_level() -> log::LevelFilter {
         Err(_) => log::LevelFilter::Info,
     }
 }
-pub fn env_host() -> (String, u16) {
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
-    (host, port)
+pub fn env_host() -> String {
+    std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
 }
 
 pub fn env_port() -> u16 {
@@ -147,7 +145,7 @@ pub async fn get_env() -> &'static Env {
         Env {
             log_level: env_log_level(),
             port: env_port(),
-            host: env_driver_host(),
+            host: env_host(),
             driver_path,
             browser_binary_path,
             profile_path,
