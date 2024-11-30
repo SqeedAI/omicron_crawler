@@ -238,6 +238,7 @@ pub async fn parse_search_entry(search_entry: &WebElement, results: &mut Vec<Sea
     results.push(SearchResult { name, title, url });
     Ok(())
 }
+//TODO Make a retry macro for stale element issues
 pub async fn parse_search(driver: &DriverSession, page_count: u8) -> CrawlerResult<Vec<SearchResult>> {
     let mut results = Vec::new();
 
@@ -262,21 +263,33 @@ pub async fn parse_search(driver: &DriverSession, page_count: u8) -> CrawlerResu
 
     for page in 2..page_count + 1 {
         load_results_page(driver, page).await?;
-        let ul = match driver
-            .find_until_loaded(By::XPath("(//ul[@role='list'])[1]"), Duration::from_secs(5))
-            .await
-        {
-            Ok(ul) => ul,
-            Err(e) => return Err(ParseError(format!("Failed to find ul {}", e))),
-        };
+        let mut retry = 5u8;
+        while retry != 0 {
+            let ul = match driver
+                .find_until_loaded(By::XPath("(//ul[@role='list'])[1]"), Duration::from_secs(5))
+                .await
+            {
+                Ok(ul) => ul,
+                Err(e) => return Err(ParseError(format!("Failed to find ul {}", e))),
+            };
 
-        let list = match ul.find_all(By::XPath("li")).await {
-            Ok(list) => list,
-            Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
-        };
+            let list = match ul.find_all(By::XPath("li")).await {
+                Ok(list) => list,
+                Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
+            };
 
-        for entry in list.iter() {
-            parse_search_entry(entry, &mut results).await?;
+            for entry in list.iter() {
+                match parse_search_entry(entry, &mut results).await {
+                    Ok(_) => {
+                        retry = 1;
+                    }
+                    Err(_) => {
+                        tokio::time::sleep(Duration::from_millis(250)).await;
+                        break;
+                    }
+                }
+            }
+            retry -= 1;
         }
     }
     Ok(results)
