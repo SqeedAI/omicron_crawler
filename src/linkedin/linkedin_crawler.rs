@@ -2,9 +2,10 @@ use crate::driver::session_manager::SessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::parse_linkedin::{
-    search_set_current_company, search_set_filter, search_set_industry, search_set_keywords, search_set_past_company, search_set_services,
-    try_press_filter_button,
+    parse_search, search_set_current_company, search_set_filter, search_set_industry, search_set_keywords, search_set_past_company,
+    search_set_services, try_press_filter_button,
 };
+use crate::linkedin::profiles::SearchResult;
 use std::time::Duration;
 use thirtyfour::By;
 
@@ -15,6 +16,11 @@ pub struct LinkedinCrawler<'a> {
 impl<'a> LinkedinCrawler<'a> {
     pub async fn new(proxy: SessionProxy<'a>) -> Self {
         Self { proxy }
+    }
+
+    pub async fn parse_search(&self, page_count: u8) -> CrawlerResult<Vec<SearchResult>> {
+        let driver_ext = self.proxy.session.as_ref().unwrap();
+        parse_search(driver_ext, page_count).await
     }
 
     pub async fn set_search_filters(

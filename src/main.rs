@@ -34,7 +34,7 @@ async fn main() {
     if let Err(e) = crawler
         .set_search_filters(
             Some("Java"),
-            Some(&["Slovakia".to_string(), "Czechia".to_string()]),
+            Some(&["Slovakia".to_string()]),
             None,
             None,
             Some(&["Software".to_string()]),
@@ -43,6 +43,14 @@ async fn main() {
         .await
     {
         println!("{}", e);
+    }
+    match crawler.parse_search(15).await {
+        Ok(results) => {
+            for result in results {
+                println!("{}", result);
+            }
+        }
+        Err(e) => println!("{}", e),
     }
     tokio::time::sleep(Duration::from_secs(5)).await;
 

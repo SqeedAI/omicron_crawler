@@ -206,26 +206,29 @@ pub async fn search_set_keywords(driver: &DriverSession, keywords: &str) -> Craw
     Ok(())
 }
 
-pub async fn parse_search_entry(driver: &DriverSession, search_entry: WebElement, results: &mut Vec<SearchResult>) -> CrawlerResult<()> {
-    let link = match search_entry.find(By::XPath(".//a")).await {
+pub async fn parse_search_entry(search_entry: &WebElement, results: &mut Vec<SearchResult>) -> CrawlerResult<()> {
+    let link = match search_entry
+        .find(By::XPath("div/div/div/div[2]/div[1]/div[1]/div/span[1]/span/a"))
+        .await
+    {
         Ok(link) => link,
-        Err(_) => return Err(ParseError("Failed to find link".to_string())),
+        Err(e) => return Err(ParseError(format!("Failed to find link {}", e))),
     };
-    let url = match link.attr("href") {
-        Ok(link_string) => link_string,
+    let url = match link.attr("href").await {
+        Ok(link_string) => link_string.unwrap(),
         Err(_) => return Err(ParseError("Failed to get link string".to_string())),
     };
 
-    let name = match link.find(By::XPath("./span/span[1]/")).await {
-        Ok(name) => match name.text() {
+    let name = match link.find(By::XPath("span/span[1]")).await {
+        Ok(name) => match name.text().await {
             Ok(name) => name,
             Err(_) => return Err(ParseError("Failed to get name text".to_string())),
         },
         Err(_) => return Err(ParseError("Failed to find name".to_string())),
     };
 
-    let title = match search_entry.find(By::XPath("/div/div/div/[2]/div[2]/")).await {
-        Ok(title) => match title.text() {
+    let title = match search_entry.find(By::XPath("div/div/div/div[2]/div[1]/div[2]")).await {
+        Ok(title) => match title.text().await {
             Ok(title) => title,
             Err(_) => return Err(ParseError("Failed to get title text".to_string())),
         },
@@ -235,10 +238,83 @@ pub async fn parse_search_entry(driver: &DriverSession, search_entry: WebElement
     results.push(SearchResult { name, title, url });
     Ok(())
 }
+pub async fn parse_search(driver: &DriverSession, page_count: u8) -> CrawlerResult<Vec<SearchResult>> {
+    let mut results = Vec::new();
 
-pub async fn parse_search(driver: &DriverSession) -> CrawlerResult<Vec<SearchResult>> {
-    let list = driver.find_all(By::XPath("//ul[@role='list']/li")).await?;
-    for entry in list {
-        parse_search_entry(entry, &mut Vec::new(), driver).await?;
+    // FIRST PAGE contains sales nav so the path to the initial UL is different for the first page.
+    // We could make the code not duplicate but the logic would require an if inside the loop which is slow.
+    let ul = match driver
+        .find_until_loaded(By::XPath("(//ul[@role='list'])[2]"), Duration::from_secs(5))
+        .await
+    {
+        Ok(ul) => ul,
+        Err(e) => return Err(ParseError(format!("Failed to find ul {}", e))),
+    };
+
+    let list = match ul.find_all(By::XPath("li")).await {
+        Ok(list) => list,
+        Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
+    };
+
+    for entry in list.iter() {
+        parse_search_entry(entry, &mut results).await?;
     }
+
+    for page in 2..page_count + 1 {
+        load_results_page(driver, page).await?;
+        let ul = match driver
+            .find_until_loaded(By::XPath("(//ul[@role='list'])[1]"), Duration::from_secs(5))
+            .await
+        {
+            Ok(ul) => ul,
+            Err(e) => return Err(ParseError(format!("Failed to find ul {}", e))),
+        };
+
+        let list = match ul.find_all(By::XPath("li")).await {
+            Ok(list) => list,
+            Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
+        };
+
+        for entry in list.iter() {
+            parse_search_entry(entry, &mut results).await?;
+        }
+    }
+    Ok(results)
+}
+
+pub async fn load_results_page(driver: &DriverSession, page: u8) -> CrawlerResult<()> {
+    let mut current_url = match driver.driver.current_url().await {
+        Ok(url) => url,
+        Err(e) => return Err(ParseError(format!("Failed to get current url {}", e))),
+    };
+
+    let mut query_pairs = current_url.query_pairs();
+    let mut new_query_string = String::new();
+    let mut found_page = false;
+    for (key, value) in query_pairs.by_ref() {
+        if !new_query_string.is_empty() {
+            new_query_string.push('&');
+        }
+        new_query_string.push_str(key.as_ref());
+        new_query_string.push('=');
+        if key.as_ref() == "page" {
+            new_query_string.push_str(page.to_string().as_str());
+            found_page = true;
+            continue;
+        }
+        new_query_string.push_str(value.as_ref());
+    }
+
+    if !found_page {
+        if !new_query_string.is_empty() {
+            new_query_string.push('&');
+        }
+        new_query_string.push_str(&format!("page={}", page));
+    }
+
+    current_url.set_query(Some(new_query_string.as_str()));
+    if let Err(e) = driver.driver.goto(&current_url.to_string()).await {
+        return Err(InteractionError(format!("Failed to load page {}", e)));
+    }
+    Ok(())
 }

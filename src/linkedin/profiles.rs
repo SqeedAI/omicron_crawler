@@ -10,7 +10,7 @@ pub struct SearchResult {
 
 impl Display for SearchResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "name: {} title: {} url: {}", self.name, self.title, self.url)
+        write!(f, "name: {}\ntitle: {}\nurl: {}\n", self.name, self.title, self.url)
     }
 }
 #[derive(Debug, Serialize)]
