@@ -7,7 +7,6 @@ use omicron_crawler::driver::service::GeckoDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::logger::Logger;
-use std::any::Any;
 use tokio::sync::OnceCell;
 
 static DRIVER_SESSION_MANAGER: OnceCell<SessionManager<GeckoDriverService>> = OnceCell::const_new();
