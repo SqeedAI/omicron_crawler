@@ -5,8 +5,9 @@ use log::LevelFilter;
 use omicron_crawler::driver::service::GeckoDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::{get_env, load_env};
-use omicron_crawler::linkedin::crawler::Crawler;
+use omicron_crawler::linkedin::linkedin_crawler::LinkedinCrawler;
 use omicron_crawler::logger::Logger;
+use std::time::Duration;
 
 //TODO
 // 1. Create a generic error handler macro that will generically handle cases like not found / stale element / etc
@@ -29,7 +30,21 @@ async fn main() {
     .await;
     let pool = &manager.pool;
     let session = pool.acquire().unwrap();
-    let crawler = Crawler::new(session).await;
+    let crawler = LinkedinCrawler::new(session).await;
+    if let Err(e) = crawler
+        .set_search_filters(
+            Some("Java"),
+            Some(&["Slovakia".to_string(), "Czechia".to_string()]),
+            None,
+            None,
+            Some(&["Software".to_string()]),
+            None,
+        )
+        .await
+    {
+        println!("{}", e);
+    }
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     // let result = crawler
     //     .parse_profile("https://www.linkedin.com/sales/lead/ACwAABtsCsMBHH4i-dKLOpQqrcqE4H3YDX8CbxE")

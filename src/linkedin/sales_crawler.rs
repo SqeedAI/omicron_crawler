@@ -7,11 +7,11 @@ use crate::linkedin::parse_sales::{
 use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
 
-pub struct Crawler<'a> {
+pub struct SalesCrawler<'a> {
     pub proxy: SessionProxy<'a>,
 }
 
-impl<'a> Crawler<'a> {
+impl<'a> SalesCrawler<'a> {
     pub async fn new(proxy: SessionProxy<'a>) -> Self {
         Self { proxy }
     }

@@ -4,7 +4,7 @@ use actix_web::{get, post, HttpResponse};
 use log::warn;
 use omicron_crawler::driver::session_manager::{SessionManager, SessionPool};
 use omicron_crawler::errors::CrawlerError;
-use omicron_crawler::linkedin::crawler::Crawler;
+use omicron_crawler::linkedin::sales_crawler::SalesCrawler;
 use std::cmp::min;
 use std::thread;
 
@@ -37,7 +37,7 @@ pub async fn message(message: Json<Vec<Message>>) -> HttpResponse {
     let session = pool.acquire();
     let message_data = message.into_inner();
     let crawler = match session {
-        Some(session) => Crawler::new(session).await,
+        Some(session) => SalesCrawler::new(session).await,
         None => {
             return HttpResponse::ServiceUnavailable().body("No free crawlers available, try again later");
         }
@@ -61,7 +61,7 @@ pub async fn search(search_params: Json<Search>) -> HttpResponse {
     let search_request = search_params.into_inner();
     let session = pool.acquire();
     let crawler = match session {
-        Some(session) => Crawler::new(session).await,
+        Some(session) => SalesCrawler::new(session).await,
         None => {
             return HttpResponse::ServiceUnavailable().body("No free crawlers available, try again later");
         }
@@ -106,7 +106,7 @@ pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
                         let pool = &driver_session_manager.pool;
                         let session = pool.acquire();
                         let crawler = match session {
-                            Some(session) => Crawler::new(session).await,
+                            Some(session) => SalesCrawler::new(session).await,
                             None => {
                                 return Err(CrawlerError::DriverError("No free crawlers available, try again later".to_string()));
                             }
