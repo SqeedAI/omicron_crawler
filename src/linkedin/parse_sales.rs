@@ -317,7 +317,7 @@ pub async fn parse_search_entry(search_entry: WebElement, results: &mut Vec<Sear
     results.push(SearchResult {
         name: name_span.text().await.unwrap(),
         title: title_span,
-        sales_url: url.to_string(),
+        url: url.to_string(),
     });
     Ok(())
 }

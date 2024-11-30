@@ -5,12 +5,12 @@ use std::fmt::{Display, Formatter};
 pub struct SearchResult {
     pub name: String,
     pub title: String,
-    pub sales_url: String,
+    pub url: String,
 }
 
 impl Display for SearchResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "name: {} title: {} url: {}", self.name, self.title, self.sales_url)
+        write!(f, "name: {} title: {} url: {}", self.name, self.title, self.url)
     }
 }
 #[derive(Debug, Serialize)]

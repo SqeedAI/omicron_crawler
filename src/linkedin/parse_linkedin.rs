@@ -1,8 +1,9 @@
 use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::{InteractionError, ParseError};
 use crate::errors::CrawlerResult;
+use crate::linkedin::profiles::SearchResult;
 use std::time::Duration;
-use thirtyfour::{By, Key};
+use thirtyfour::{By, Key, WebElement};
 
 pub async fn try_press_filter_button(driver: &DriverSession) -> CrawlerResult<()> {
     let filter_button = match driver
@@ -203,4 +204,41 @@ pub async fn search_set_keywords(driver: &DriverSession, keywords: &str) -> Craw
         return Err(InteractionError(format!("Failed to send keys to search input {}", e)));
     }
     Ok(())
+}
+
+pub async fn parse_search_entry(driver: &DriverSession, search_entry: WebElement, results: &mut Vec<SearchResult>) -> CrawlerResult<()> {
+    let link = match search_entry.find(By::XPath(".//a")).await {
+        Ok(link) => link,
+        Err(_) => return Err(ParseError("Failed to find link".to_string())),
+    };
+    let url = match link.attr("href") {
+        Ok(link_string) => link_string,
+        Err(_) => return Err(ParseError("Failed to get link string".to_string())),
+    };
+
+    let name = match link.find(By::XPath("./span/span[1]/")).await {
+        Ok(name) => match name.text() {
+            Ok(name) => name,
+            Err(_) => return Err(ParseError("Failed to get name text".to_string())),
+        },
+        Err(_) => return Err(ParseError("Failed to find name".to_string())),
+    };
+
+    let title = match search_entry.find(By::XPath("/div/div/div/[2]/div[2]/")).await {
+        Ok(title) => match title.text() {
+            Ok(title) => title,
+            Err(_) => return Err(ParseError("Failed to get title text".to_string())),
+        },
+        Err(_) => return Err(ParseError("Failed to find title".to_string())),
+    };
+
+    results.push(SearchResult { name, title, url });
+    Ok(())
+}
+
+pub async fn parse_search(driver: &DriverSession) -> CrawlerResult<Vec<SearchResult>> {
+    let list = driver.find_all(By::XPath("//ul[@role='list']/li")).await?;
+    for entry in list {
+        parse_search_entry(entry, &mut Vec::new(), driver).await?;
+    }
 }
