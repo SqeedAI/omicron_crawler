@@ -31,27 +31,12 @@ async fn main() {
     let pool = &manager.pool;
     let session = pool.acquire().unwrap();
     let crawler = LinkedinCrawler::new(session).await;
-    if let Err(e) = crawler
-        .set_search_filters(
-            Some("Java"),
-            Some(&["Slovakia".to_string()]),
-            None,
-            None,
-            Some(&["Software".to_string()]),
-            None,
-        )
-        .await
-    {
-        println!("{}", e);
-    }
-    match crawler.parse_search(15).await {
-        Ok(results) => {
-            for result in results {
-                println!("{}", result);
-            }
-        }
+
+    match crawler.parse_profile("https://www.linkedin.com/in/matus-chochlik-154a7827/").await {
+        Ok(profile) => println!("{}", profile),
         Err(e) => println!("{}", e),
     }
+
     tokio::time::sleep(Duration::from_secs(5)).await;
 
     // let result = crawler

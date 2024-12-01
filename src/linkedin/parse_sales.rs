@@ -565,7 +565,7 @@ pub async fn parse_sales_profile(driver: &DriverSession, sales_profile_url: &str
     let profile_picture_url = parse_profile_picture(driver).await;
 
     Ok(Profile {
-        sales_url: sales_profile_url.to_string(),
+        sales_url: Some(sales_profile_url.to_string()),
         profile_picture_url,
         name: name_span.text().await.unwrap().to_string(),
         url: linkedin_url,

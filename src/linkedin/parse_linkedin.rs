@@ -1,7 +1,8 @@
 use crate::driver::session::DriverSession;
-use crate::errors::CrawlerError::{InteractionError, ParseError};
+use crate::errors::CrawlerError::{DriverError, InteractionError, ParseError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::profiles::SearchResult;
+use crate::linkedin::parse_sales::parse_experience_entry;
+use crate::linkedin::profiles::{Experience, Profile, SearchResult};
 use std::time::Duration;
 use thirtyfour::{By, Key, WebElement};
 
@@ -257,6 +258,7 @@ pub async fn parse_search(driver: &DriverSession, page_count: u8) -> CrawlerResu
         Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
     };
 
+    info!("Found {} results, parsing first page entries...", list.len());
     for entry in list.iter() {
         parse_search_entry(entry, &mut results).await?;
     }
@@ -277,13 +279,14 @@ pub async fn parse_search(driver: &DriverSession, page_count: u8) -> CrawlerResu
                 Ok(list) => list,
                 Err(e) => return Err(ParseError(format!("Failed to find list {}", e))),
             };
-
+            info!("Found {} results, parsing entries...", list.len());
             for entry in list.iter() {
                 match parse_search_entry(entry, &mut results).await {
                     Ok(_) => {
                         retry = 1;
                     }
                     Err(_) => {
+                        warn!("Failed to parse entry, retrying...");
                         tokio::time::sleep(Duration::from_millis(250)).await;
                         break;
                     }
@@ -326,8 +329,158 @@ pub async fn load_results_page(driver: &DriverSession, page: u8) -> CrawlerResul
     }
 
     current_url.set_query(Some(new_query_string.as_str()));
+    info!("Loading page {}", page);
     if let Err(e) = driver.driver.goto(&current_url.to_string()).await {
         return Err(InteractionError(format!("Failed to load page {}", e)));
     }
     Ok(())
+}
+
+pub async fn parse_name(driver: &DriverSession) -> CrawlerResult<String> {
+    let name_heading = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[1]/div[2]/div[2]/div[1]/div[1]/span[1]/a/h1"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(name_span) => name_span,
+        Err(_) => return Err(ParseError("Failed to find name heading".to_string())),
+    };
+
+    let name = match name_heading.text().await {
+        Ok(name) => name,
+        Err(_) => return Err(ParseError("Failed to get name text".to_string())),
+    };
+    Ok(name)
+}
+
+pub async fn parse_description(driver: &DriverSession) -> CrawlerResult<String> {
+    let title = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[1]/div[2]/div[2]/div[1]/div[2]"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(name_span) => name_span,
+        Err(_) => return Err(ParseError("Failed to find title".to_string())),
+    };
+    let title = match title.text().await {
+        Ok(title) => title,
+        Err(_) => return Err(ParseError("Failed to get title text".to_string())),
+    };
+    Ok(title)
+}
+pub async fn parse_location(driver: &DriverSession) -> CrawlerResult<String> {
+    let location = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[1]/div[2]/div[2]/div[2]/span[1]"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(name_span) => name_span,
+        Err(_) => return Err(ParseError("Failed to find location heading".to_string())),
+    };
+    let location = match location.text().await {
+        Ok(location) => location,
+        Err(_) => return Err(ParseError("Failed to get location text".to_string())),
+    };
+    Ok(location)
+}
+
+pub async fn parse_about(driver: &DriverSession) -> CrawlerResult<String> {
+    let about = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[2]/div[3]/div/div/div/span[1]"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(name_span) => name_span,
+        Err(_) => return Err(ParseError("Failed to find about heading".to_string())),
+    };
+
+    let text = match about.text().await {
+        Ok(text) => text,
+        Err(_) => return Err(ParseError("Failed to get about text".to_string())),
+    };
+    Ok(text)
+}
+
+pub async fn parse_profile_picture(driver: &DriverSession) -> CrawlerResult<String> {
+    let profile_picture = match driver
+        .find_until_loaded(
+            By::XPath("/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[1]/div[2]/div[1]/div[1]/div/button/img"),
+            Duration::from_secs(5),
+        )
+        .await
+    {
+        Ok(profile_picture) => profile_picture,
+        Err(_) => return Err(ParseError("Failed to find profile picture".to_string())),
+    };
+    let profile_picture_url = match profile_picture.attr("src").await {
+        Ok(profile_picture) => match profile_picture {
+            Some(profile_picture) => profile_picture,
+            None => return Err(ParseError("Failed to get profile picture src".to_string())),
+        },
+        Err(_) => return Err(ParseError("Failed to get profile picture src".to_string())),
+    };
+    Ok(profile_picture_url)
+}
+
+pub async fn parse_experience_entry(experience_entry: WebElement, experiences: &mut Vec<Experience>) -> CrawlerResult<()> {}
+
+pub async fn parse_experience(driver: &DriverSession) -> CrawlerResult<Vec<Experience>> {
+    let experience_section = match driver
+        .driver
+        .find(By::XPath(
+            "/html/body/div[7]/div[3]/div/div/div[2]/div/div/main/section[4]/div[3]/ul",
+        ))
+        .await
+    {
+        Ok(experience_section) => experience_section,
+        Err(_) => return Err(ParseError("Failed to find experience section".to_string())),
+    };
+
+    let experience_entries = match experience_section.find_all(By::XPath("li")).await {
+        Ok(experience_entries) => experience_entries,
+        Err(_) => return Err(ParseError("Failed to find experience entries".to_string())),
+    };
+
+    let mut vec = Vec::new();
+
+    for experience_entry in experience_entries {
+        parse_experience_entry(experience_entry, &mut vec).await?;
+    }
+    Ok(vec)
+}
+
+pub async fn parse_profile(driver: &DriverSession, profile_url: &str) -> CrawlerResult<Profile> {
+    if let Err(e) = driver.driver.goto(profile_url).await {
+        return Err(DriverError(format!("Failed to go to profile {}", e)));
+    }
+    let name = parse_name(driver).await?;
+    let description = parse_description(driver).await?;
+    let location = parse_location(driver).await?;
+    let profile_picture_url = parse_profile_picture(driver).await?;
+    let about = match parse_about(driver).await {
+        Ok(about) => Some(about),
+        Err(_) => None,
+    };
+
+    Ok(Profile {
+        name,
+        url: profile_url.to_string(),
+        sales_url: None,
+        profile_picture_url,
+        description,
+        about,
+        location,
+        experience: None,
+        education: None,
+        skills: None,
+        languages: None,
+    })
 }

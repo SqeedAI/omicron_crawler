@@ -2,10 +2,10 @@ use crate::driver::session_manager::SessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::parse_linkedin::{
-    parse_search, search_set_current_company, search_set_filter, search_set_industry, search_set_keywords, search_set_past_company,
-    search_set_services, try_press_filter_button,
+    parse_profile, parse_search, search_set_current_company, search_set_filter, search_set_industry, search_set_keywords,
+    search_set_past_company, search_set_services, try_press_filter_button,
 };
-use crate::linkedin::profiles::SearchResult;
+use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
 use thirtyfour::By;
 
@@ -72,5 +72,16 @@ impl<'a> LinkedinCrawler<'a> {
         }
 
         Ok(())
+    }
+
+    pub async fn parse_profile(&self, profile_url: &str) -> CrawlerResult<Profile> {
+        let driver_ext = self.proxy.session.as_ref().unwrap();
+        let original_tab = driver_ext.driver.window().await.unwrap();
+        let new_window_handle = driver_ext.driver.new_tab().await.unwrap();
+        driver_ext.driver.switch_to_window(new_window_handle).await.unwrap();
+        let result = parse_profile(driver_ext, profile_url).await;
+        driver_ext.driver.close_window().await.unwrap();
+        driver_ext.driver.switch_to_window(original_tab).await.unwrap();
+        result
     }
 }

@@ -17,7 +17,7 @@ impl Display for SearchResult {
 pub struct Profile {
     pub name: String,
     pub url: String,
-    pub sales_url: String,
+    pub sales_url: Option<String>,
     pub profile_picture_url: String,
     pub description: String,
     pub about: Option<String>,
