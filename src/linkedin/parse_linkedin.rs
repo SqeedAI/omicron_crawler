@@ -429,9 +429,6 @@ pub async fn parse_profile_picture(driver: &DriverSession) -> CrawlerResult<Stri
     };
     Ok(profile_picture_url)
 }
-
-pub async fn parse_experience_entry(experience_entry: WebElement, experiences: &mut Vec<Experience>) -> CrawlerResult<()> {}
-
 pub async fn parse_experience(driver: &DriverSession) -> CrawlerResult<Vec<Experience>> {
     let experience_section = match driver
         .driver
@@ -451,9 +448,9 @@ pub async fn parse_experience(driver: &DriverSession) -> CrawlerResult<Vec<Exper
 
     let mut vec = Vec::new();
 
-    for experience_entry in experience_entries {
-        parse_experience_entry(experience_entry, &mut vec).await?;
-    }
+    // for experience_entry in experience_entries {
+    //     parse_experience_entry(experience_entry, &mut vec).await?;
+    // }
     Ok(vec)
 }
 

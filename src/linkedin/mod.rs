@@ -1,3 +1,4 @@
+mod api;
 pub mod enums;
 pub mod linkedin_crawler;
 pub mod parse_linkedin;
