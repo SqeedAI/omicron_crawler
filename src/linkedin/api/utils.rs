@@ -1,7 +1,8 @@
+use regex::Regex;
 use std::io::Read;
 
 pub fn load_cookies() -> Option<String> {
-    let mut file = match std::fs::File::open("cookies.dat") {
+    let mut file = match std::fs::File::open("cookie.dat") {
         Ok(file) => file,
         Err(_) => {
             info!("Failed to open cookies file");
@@ -14,4 +15,16 @@ pub fn load_cookies() -> Option<String> {
         return None;
     }
     Some(cookies)
+}
+
+pub fn cookies_session_id(cookies: &str) -> Option<String> {
+    let re = Regex::new(r#"JSESSIONID="(.*?)"(?:;|$)"#).unwrap();
+    info!("Checking cookie {}", cookies);
+    match re.captures(cookies) {
+        Some(captures) => Some(captures.get(1).unwrap().as_str().to_string()),
+        None => {
+            error!("Failed to find JSESSIONID cookie");
+            None
+        }
+    }
 }

@@ -4,28 +4,31 @@ mod utils;
 use crate::errors::CrawlerError::SessionError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse};
+use crate::linkedin::api::utils::{cookies_session_id, load_cookies};
 use actix_web::cookie::CookieJar;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
-use reqwest::cookie::{CookieStore, Jar};
 use reqwest::{Client, Url};
+use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
+use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 
-static LINKEDIN_URL: &str = "https://www.linkedin.com";
-static API_URL: &str = "https://www.linkedin.com/voyager/api";
-
-//TODO Split the apis into separate functions
-
 pub struct LinkedinSession {
-    pub session_id: String,
-    pub client: Client,
-    pub cookie_store: Arc<Jar>,
+    session_id: String,
+    client: Client,
+    cookie_store: Arc<CookieStoreMutex>,
 }
+//TODO Replace crawler result with api result
 
 impl LinkedinSession {
-    fn create_default_headers() -> HeaderMap {
+    const LINKEDIN_URL: &'static str = "https://www.linkedin.com";
+    const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
+
+    //TODO This should be a static place in the memory. Shouldn't be created every time
+
+    fn create_default_headers(csrf_token: Option<&str>) -> HeaderMap {
         let mut headers = HeaderMap::new();
         headers.insert(
             "X-Li-User-Agent",
@@ -35,13 +38,17 @@ impl LinkedinSession {
         headers.insert("X-User-Language", HeaderValue::from_static("en"));
         headers.insert("X-User-Locale", HeaderValue::from_static("en_US"));
         headers.insert("Accept-Language", HeaderValue::from_static("en-us"));
+        if let Some(token) = csrf_token {
+            info!("Using csrf token {}", token);
+            headers.insert("csrf-token", HeaderValue::from_str(token).unwrap());
+        }
         headers
     }
-    async fn obtain_session_id(client: &Client, cookie_store: &Jar) -> CrawlerResult<String> {
-        let auth_url = format!("{}{}", LINKEDIN_URL, "/uas/authenticate");
-        let default_headers = Self::create_default_headers();
+    async fn obtain_session_id(&mut self) -> CrawlerResult<()> {
+        let auth_url = format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate");
+        let default_headers = Self::create_default_headers(None);
         let response = fatal_unwrap_e!(
-            client.get(auth_url).headers(default_headers).send().await,
+            self.client.get(auth_url).headers(default_headers).send().await,
             "Failed to obtain linkedin set-cookies {}"
         );
         if !response.status().is_success() {
@@ -58,49 +65,25 @@ impl LinkedinSession {
         if auth_response.status != "success" {
             return Err(SessionError(format!("Failed to authenticate {}", auth_response.status)));
         }
-        let linkedin_url = Url::parse(LINKEDIN_URL).unwrap();
-        let session_id = match cookie_store.cookies(&linkedin_url) {
-            Some(cookie) => {
-                let str_cookie = match cookie.to_str() {
-                    Ok(str_cookie) => str_cookie,
-                    Err(_) => {
-                        return Err(SessionError("Failed to convert cookie to str".to_string()));
-                    }
-                };
-                let re = Regex::new(r#"JSESSIONID="(.*?)"(?:;|$)"#).unwrap();
-                info!("Checking cookie {}", str_cookie);
-                match re.captures(str_cookie) {
-                    Some(captures) => captures.get(1).unwrap().as_str().to_string(),
-                    None => {
-                        return Err(SessionError("Failed to find JSESSIONID cookie".to_string()));
-                    }
-                }
-            }
-            None => {
-                return Err(SessionError("No cookie found".to_string()));
-            }
-        };
-        Ok(session_id)
+        let cookies = self.cookie_store.lock().unwrap();
+        let session_id = cookies.get(Self::LINKEDIN_URL, "/", "JSESSIONID").unwrap();
+        self.session_id = session_id.value().to_string();
+        Ok(())
     }
-    pub async fn new(username: &str, password: &str) -> CrawlerResult<LinkedinSession> {
-        let cookie_store = Arc::new(Jar::default());
-        let client = fatal_unwrap_e!(
-            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
-            "Failed to create client {}"
-        );
 
-        let session_id = Self::obtain_session_id(&client, &cookie_store).await?;
+    pub async fn authenticate(&mut self, username: &str, password: &str) -> CrawlerResult<()> {
+        self.obtain_session_id().await?;
         info!("Obtained session id");
-        let headers = Self::create_default_headers();
+        let headers = Self::create_default_headers(Some(&self.session_id));
         let form = vec![
             ("session_key", username),
             ("session_password", password),
-            ("JSESSIONID", &session_id),
+            ("JSESSIONID", &self.session_id),
         ];
-        let response = match client
-            .post(format!("{}{}", LINKEDIN_URL, "/uas/authenticate"))
+        let response = match self
+            .client
+            .post(format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate"))
             .headers(headers)
-            .header("csrf-token", &session_id)
             .form(&form)
             .send()
             .await
@@ -127,11 +110,48 @@ impl LinkedinSession {
         }
         println!("{}", response_data.login_result);
         info!("Authenticated successfully");
+        Ok(())
+    }
 
-        Ok(LinkedinSession {
+    pub async fn profile(&self, profile_id: String) {
+        let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
+        let headers = Self::create_default_headers(Some(&self.session_id));
+        match self.client.get(endpoint).headers(headers).send().await {
+            Ok(response) => println!("{}", response.text().await.unwrap()),
+            Err(e) => {
+                error!("Failed to get profile {}", e);
+            }
+        };
+    }
+
+    /// TODO Optimize string usage here. Maybe just a slice is needed for session_id instead of a copy
+    pub fn new() -> LinkedinSession {
+        let mut cookie_store = CookieStore::new(None);
+        let mut session_id = "".to_string();
+
+        if let Some(cookies) = load_cookies() {
+            if let Some(found_session_id) = cookies_session_id(&cookies) {
+                info!("Found cookies, using them");
+                session_id = found_session_id;
+                let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
+                let cookie_list = cookies.split(";").collect::<Vec<&str>>();
+                for cookie in cookie_list {
+                    if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {
+                        error!("Failed to parse cookie {}", code);
+                    }
+                }
+            }
+        }
+        let cookie_store = CookieStoreMutex::new(cookie_store);
+        let cookie_store = Arc::new(cookie_store);
+        let client = fatal_unwrap_e!(
+            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            "Failed to create client {}"
+        );
+        Self {
             session_id,
             client,
             cookie_store,
-        })
+        }
     }
 }

@@ -12,10 +12,8 @@ use omicron_crawler::logger::Logger;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(LevelFilter::Trace);
-    let session = match LinkedinSession::new("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
-        Ok(session) => session,
-        Err(e) => panic!("{}", e),
-    };
+    let session = LinkedinSession::new();
+    session.profile("matus-chochlik-154a7827".to_string()).await;
 
     // load_env();
     //
