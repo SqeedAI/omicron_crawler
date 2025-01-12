@@ -41,6 +41,10 @@ script:pre-request {
 script:post-response {
   const cookies = res.headers.get("set-cookie");
   console.log(cookies)
+  if(cookies === undefined){
+    console.log("No cookies found");
+    return;
+  }
   const session_entry = cookies[5];
   const JSESSIONID = session_entry.match(/JSESSIONID=(.*?);/)[1].replace(/"/g, '');
   bru.setEnvVar('JSESSIONID', JSESSIONID);

@@ -2,12 +2,8 @@
 extern crate log;
 
 use log::LevelFilter;
-use omicron_crawler::driver::service::GeckoDriverService;
-use omicron_crawler::driver::session_manager::SessionManager;
-use omicron_crawler::env::{get_env, load_env};
-use omicron_crawler::linkedin::linkedin_crawler::LinkedinCrawler;
+use omicron_crawler::linkedin::api::LinkedinSession;
 use omicron_crawler::logger::Logger;
-use std::time::Duration;
 
 //TODO
 // 1. Create a generic error handler macro that will generically handle cases like not found / stale element / etc
@@ -16,28 +12,33 @@ use std::time::Duration;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(LevelFilter::Trace);
-    load_env();
+    let session = match LinkedinSession::new("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
+        Ok(session) => session,
+        Err(e) => panic!("{}", e),
+    };
 
-    let env = get_env().await;
-    let manager: SessionManager<GeckoDriverService> = SessionManager::new(
-        env.driver_host.as_str(),
-        env.driver_port,
-        env.driver_session_count,
-        env.driver_path.as_str(),
-        env.profile_path.as_str(),
-        env.browser_binary_path.as_deref(),
-    )
-    .await;
-    let pool = &manager.pool;
-    let session = pool.acquire().unwrap();
-    let crawler = LinkedinCrawler::new(session).await;
-
-    match crawler.parse_profile("https://www.linkedin.com/in/matus-chochlik-154a7827/").await {
-        Ok(profile) => println!("{}", profile),
-        Err(e) => println!("{}", e),
-    }
-
-    tokio::time::sleep(Duration::from_secs(5)).await;
+    // load_env();
+    //
+    // let env = get_env().await;
+    // let manager: SessionManager<GeckoDriverService> = SessionManager::new(
+    //     env.driver_host.as_str(),
+    //     env.driver_port,
+    //     env.driver_session_count,
+    //     env.driver_path.as_str(),
+    //     env.profile_path.as_str(),
+    //     env.browser_binary_path.as_deref(),
+    // )
+    // .await;
+    // let pool = &manager.pool;
+    // let session = pool.acquire().unwrap();
+    // let crawler = LinkedinCrawler::new(session).await;
+    //
+    // match crawler.parse_profile("https://www.linkedin.com/in/matus-chochlik-154a7827/").await {
+    //     Ok(profile) => println!("{}", profile),
+    //     Err(e) => println!("{}", e),
+    // }
+    //
+    // tokio::time::sleep(Duration::from_secs(5)).await;
 
     // let result = crawler
     //     .parse_profile("https://www.linkedin.com/sales/lead/ACwAABtsCsMBHH4i-dKLOpQqrcqE4H3YDX8CbxE")

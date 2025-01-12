@@ -6,6 +6,7 @@ pub enum CrawlerError {
     ParseError(String),
     InteractionError(String),
     DriverError(String),
+    SessionError(String),
 }
 
 impl Display for CrawlerError {
@@ -14,6 +15,7 @@ impl Display for CrawlerError {
             CrawlerError::ParseError(e) => write!(f, "ParseError: {}", e),
             CrawlerError::InteractionError(e) => write!(f, "InteractionError: {}", e),
             CrawlerError::DriverError(e) => write!(f, "DriverError: {}", e),
+            CrawlerError::SessionError(e) => write!(f, "SessionError: {}", e),
         }
     }
 }
