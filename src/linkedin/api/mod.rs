@@ -3,7 +3,7 @@ mod utils;
 
 use crate::errors::CrawlerError::SessionError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile};
+use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, Skill, SkillView};
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
 use http::{HeaderMap, HeaderValue};
@@ -12,6 +12,7 @@ use reqwest::cookie::CookieStore as CookieStoreTrait;
 use reqwest::{Client, Url};
 use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
+use std::error::Error;
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
@@ -118,13 +119,31 @@ impl LinkedinSession {
         Ok(())
     }
 
-    pub async fn profile(&self, profile_id: String) -> CrawlerResult<Profile> {
+    pub async fn profile(&self, profile_id: &str) -> CrawlerResult<Profile> {
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
         let headers = Self::create_default_headers(Some(&self.session_id));
-        match self.client.get(endpoint).headers(headers).send().await {
-            Ok(response) => Ok(response.json::<Profile>().await.unwrap()),
-            Err(e) => Err(SessionError(format!("Failed to get profile {}", e))),
-        }
+        let profile = match self.client.get(endpoint).headers(headers).send().await {
+            Ok(response) => match response.json::<Profile>().await {
+                Ok(profile) => profile,
+                Err(e) => return Err(SessionError(format!("Failed to parse profile {:?}", e))),
+            },
+            Err(e) => return Err(SessionError(format!("Failed to get profile {}", e))),
+        };
+
+        Ok(profile)
+    }
+
+    pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {
+        let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::API_URL, profile_id);
+        let headers = Self::create_default_headers(Some(&self.session_id));
+        let skills = match self.client.get(endpoint).headers(headers).send().await {
+            Ok(response) => match response.json::<SkillView>().await {
+                Ok(skills) => skills,
+                Err(e) => return Err(SessionError(format!("Failed to parse skills {:?}", e))),
+            },
+            Err(e) => return Err(SessionError(format!("Failed to get skills {}", e))),
+        };
+        Ok(skills)
     }
 
     /// TODO Optimize string usage here. Maybe just a slice is needed for session_id instead of a copy

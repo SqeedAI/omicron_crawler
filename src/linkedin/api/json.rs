@@ -17,6 +17,7 @@ pub struct Date {
     pub day: Option<i32>,
 }
 #[derive(serde::Deserialize)]
+#[serde(rename_all(deserialize = "camelCase"))]
 pub struct TimePeriod {
     pub start_date: Option<Date>,
     pub end_date: Option<Date>,
@@ -76,6 +77,7 @@ pub struct PositionView {
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Position {
     pub title: String,
+    pub location_name: Option<String>,
     pub description: Option<String>,
     pub time_period: TimePeriod,
     pub company_name: Option<String>,
@@ -84,7 +86,7 @@ pub struct Position {
 #[derive(serde::Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ProfileView {
-    pub summary: String,
+    pub summary: Option<String>,
     pub industry_name: String,
     pub first_name: String,
     pub last_name: String,
@@ -114,11 +116,20 @@ where
     #[derive(serde::Deserialize)]
     #[serde(rename_all(deserialize = "camelCase"))]
     struct VectorImage {
+        artifacts: Vec<Artifact>,
         root_url: String,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
+    struct Artifact {
+        file_identifying_url_path_segment: String,
     }
 
     let helper = Helper::deserialize(deserializer)?;
-    Ok(helper.picture.vector_image.root_url)
+    Ok(format!(
+        "{}{}",
+        helper.picture.vector_image.root_url, helper.picture.vector_image.artifacts[0].file_identifying_url_path_segment
+    ))
 }
 #[derive(serde::Deserialize)]
 pub struct LanguageView {
@@ -127,7 +138,7 @@ pub struct LanguageView {
 #[derive(serde::Deserialize)]
 pub struct Language {
     pub name: String,
-    pub proficiency: String,
+    pub proficiency: Option<String>,
 }
 #[derive(serde::Deserialize)]
 pub struct CertificateView {
