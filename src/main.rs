@@ -2,6 +2,7 @@
 extern crate log;
 
 use log::LevelFilter;
+use omicron_crawler::linkedin::api::json::SearchParams;
 use omicron_crawler::linkedin::api::LinkedinSession;
 use omicron_crawler::logger::Logger;
 
@@ -13,14 +14,18 @@ use omicron_crawler::logger::Logger;
 async fn main() {
     Logger::init(LevelFilter::Trace);
     let session = LinkedinSession::new();
-    let profile = match session.profile("peter-hamran-151a6317a").await {
-        Ok(profile) => profile,
-        Err(e) => {
-            assert!(false, "Failed to get profile {}", e);
-            return;
-        }
-    };
-    println!("{}", profile.profile.first_name);
+    session
+        .search_people(SearchParams {
+            page: 1,
+            keywords: Some("Java".to_string()),
+            keyword_first_name: Some("Tomas".to_string()),
+            keyword_last_name: None,
+            keyword_title: None,
+            keyword_company: None,
+            keyword_school: None,
+            regions: None,
+        })
+        .await;
 
     // load_env();
     //

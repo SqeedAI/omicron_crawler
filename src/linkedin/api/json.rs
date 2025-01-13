@@ -1,5 +1,15 @@
 use serde::Deserialize;
 
+pub struct SearchParams {
+    pub keywords: Option<String>,
+    pub keyword_first_name: Option<String>,
+    pub keyword_last_name: Option<String>,
+    pub keyword_title: Option<String>,
+    pub keyword_company: Option<String>,
+    pub keyword_school: Option<String>,
+    pub regions: Option<Vec<String>>,
+    pub page: u32,
+}
 #[derive(serde::Deserialize)]
 pub struct FetchCookiesResponse {
     pub status: String,
@@ -199,5 +209,58 @@ pub struct Publication {
     pub date: Date,
     pub name: String,
     pub publisher: String,
+    pub url: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct SearchResult {
+    #[serde(rename = "data.searchDashClustersByAll.elements")]
+    pub elements: Vec<SearchMetaItem>,
+}
+#[derive(serde::Deserialize)]
+pub struct SearchMetaItem {
+    #[serde(deserialize_with = "deserialize_search_item")]
+    pub items: Vec<SearchItem>,
+}
+
+fn deserialize_search_item<'de, D>(deserializer: D) -> Result<Vec<SearchItem>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    struct ItemInner {
+        #[serde(rename = "item.entityResult.title.text")]
+        pub full_name: String,
+        #[serde(rename = "item.entityResult.primarySubtitle.text")]
+        pub sub_title: String,
+        #[serde(rename = "item.entityResult.summary.text")]
+        pub summary: String,
+        #[serde(rename = "item.entityResult.navigationUrl")]
+        pub url: String,
+    }
+    //TODO possible case with three names
+    let items: Vec<ItemInner> = Vec::deserialize(deserializer)?;
+    let mut out = Vec::with_capacity(items.len());
+    for item_inner in items {
+        let mut name_split = item_inner.full_name.split(" ");
+        let first_name = name_split.next().unwrap().to_string();
+        let last_name = name_split.next().unwrap().to_string();
+        out.push(SearchItem {
+            first_name,
+            last_name,
+            title: item_inner.sub_title,
+            summary: item_inner.summary,
+            url: item_inner.url,
+        });
+    }
+    Ok(out)
+}
+
+#[derive(serde::Deserialize)]
+pub struct SearchItem {
+    pub first_name: String,
+    pub last_name: String,
+    pub title: String,
+    pub summary: String,
     pub url: String,
 }

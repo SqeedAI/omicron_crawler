@@ -1,9 +1,9 @@
-mod json;
+pub mod json;
 mod utils;
 
 use crate::errors::CrawlerError::SessionError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, Skill, SkillView};
+use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, Skill, SkillView};
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
 use http::{HeaderMap, HeaderValue};
@@ -13,6 +13,7 @@ use reqwest::{Client, Url};
 use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
 use std::error::Error;
+use std::fmt::format;
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
@@ -131,6 +132,43 @@ impl LinkedinSession {
         };
 
         Ok(profile)
+    }
+
+    pub async fn search_people(&self, params: SearchParams) {
+        let mut filters = Vec::<String>::new();
+        filters.push(String::from("(key:resultType,value:List(PEOPLE))".to_string()));
+        if let Some(keyword_first_name) = params.keyword_first_name {
+            filters.push(format!("(key:firstName,value:List({}))", keyword_first_name))
+        }
+        if let Some(keyword_last_name) = params.keyword_last_name {
+            filters.push(format!("(key:lastName,value:List({}))", keyword_last_name))
+        }
+        if let Some(keyword_title) = params.keyword_title {
+            filters.push(format!("(key:title,value:List({}))", keyword_title))
+        }
+        if let Some(keyword_company) = params.keyword_company {
+            filters.push(format!("(key:company,value:List({}))", keyword_company))
+        }
+        if let Some(keyword_school) = params.keyword_school {
+            filters.push(format!("(key:school,value:List({}))", keyword_school))
+        }
+        if let Some(regions) = params.regions {
+            filters.push(format!("(key:geoUrn,value:List({}))", regions.join(" | ")))
+        }
+        let filter_params = format!("List({})", filters.join(","));
+        let keywords = params.keywords.unwrap_or_else(|| "".to_string());
+        let endpoint = format!(
+            "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
+            Self::API_URL,
+            params.page,
+            keywords,
+            filter_params
+        );
+        let headers = Self::create_default_headers(Some(&self.session_id));
+        match self.client.get(endpoint).headers(headers).send().await {
+            Ok(response) => println!("response: {}", response.text().await.unwrap()),
+            Err(e) => error!("Failed to get search result {}", e),
+        };
     }
 
     pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {
