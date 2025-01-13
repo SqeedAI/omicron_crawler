@@ -3,11 +3,12 @@ mod utils;
 
 use crate::errors::CrawlerError::SessionError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse};
-use crate::linkedin::api::utils::{cookies_session_id, load_cookies};
+use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile};
+use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
+use reqwest::cookie::CookieStore as CookieStoreTrait;
 use reqwest::{Client, Url};
 use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
@@ -24,6 +25,7 @@ pub struct LinkedinSession {
 
 impl LinkedinSession {
     const LINKEDIN_URL: &'static str = "https://www.linkedin.com";
+    const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
     const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
 
     //TODO This should be a static place in the memory. Shouldn't be created every time
@@ -66,7 +68,7 @@ impl LinkedinSession {
             return Err(SessionError(format!("Failed to authenticate {}", auth_response.status)));
         }
         let cookies = self.cookie_store.lock().unwrap();
-        let session_id = cookies.get(Self::LINKEDIN_URL, "/", "JSESSIONID").unwrap();
+        let session_id = cookies.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID").unwrap();
         self.session_id = session_id.value().to_string();
         Ok(())
     }
@@ -108,20 +110,21 @@ impl LinkedinSession {
         if response_data.login_result != "PASS" {
             return Err(SessionError(format!("Failed to authenticate {}", response_data.login_result)));
         }
-        println!("{}", response_data.login_result);
+        let url = Url::parse(Self::LINKEDIN_URL).unwrap();
+        let cookies = self.cookie_store.cookies(&url).unwrap();
+        let bytes = cookies.as_bytes();
+        save_cookies(bytes);
         info!("Authenticated successfully");
         Ok(())
     }
 
-    pub async fn profile(&self, profile_id: String) {
+    pub async fn profile(&self, profile_id: String) -> CrawlerResult<Profile> {
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
         let headers = Self::create_default_headers(Some(&self.session_id));
         match self.client.get(endpoint).headers(headers).send().await {
-            Ok(response) => println!("{}", response.text().await.unwrap()),
-            Err(e) => {
-                error!("Failed to get profile {}", e);
-            }
-        };
+            Ok(response) => Ok(response.json::<Profile>().await.unwrap()),
+            Err(e) => Err(SessionError(format!("Failed to get profile {}", e))),
+        }
     }
 
     /// TODO Optimize string usage here. Maybe just a slice is needed for session_id instead of a copy

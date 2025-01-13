@@ -13,7 +13,10 @@ use omicron_crawler::logger::Logger;
 async fn main() {
     Logger::init(LevelFilter::Trace);
     let session = LinkedinSession::new();
-    session.profile("matus-chochlik-154a7827".to_string()).await;
+    match session.profile("matus-chochlik-154a7827".to_string()).await {
+        Ok(profile) => println!("{}", profile.profile.first_name),
+        Err(e) => println!("{}", e),
+    }
 
     // load_env();
     //

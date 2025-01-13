@@ -12,13 +12,13 @@ pub struct AuthenticateResponse {
 
 #[derive(serde::Deserialize)]
 pub struct Date {
-    pub year: String,
-    pub month: Option<String>,
-    pub day: Option<String>,
+    pub year: i32,
+    pub month: Option<i32>,
+    pub day: Option<i32>,
 }
 #[derive(serde::Deserialize)]
 pub struct TimePeriod {
-    pub start_date: Date,
+    pub start_date: Option<Date>,
     pub end_date: Option<Date>,
 }
 #[derive(serde::Deserialize)]
@@ -30,7 +30,7 @@ pub struct Profile {
     pub position_view: PositionView,
     pub profile: ProfileView,
     pub language_view: LanguageView,
-    pub certificate_view: CertificateView,
+    pub certification_view: CertificateView,
     pub test_score_view: TestScoreView,
     pub course_view: CourseView,
     pub honor_view: HonorView,
@@ -80,6 +80,7 @@ pub struct Position {
     pub time_period: TimePeriod,
     pub company_name: Option<String>,
 }
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ProfileView {
@@ -91,21 +92,16 @@ pub struct ProfileView {
     pub geo_country_name: String,
     pub headline: String,
     #[serde(deserialize_with = "deserialize_profile_url")]
+    #[serde(rename = "miniProfile")]
     pub picture_url: String,
 }
 
-fn deserialize_profile_url<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn deserialize_profile_url<'a, D>(deserializer: D) -> Result<String, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: serde::Deserializer<'a>,
 {
     #[derive(serde::Deserialize)]
-    #[serde(rename_all(deserialize = "camelCase"))]
     struct Helper {
-        mini_profile: MiniProfile,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct MiniProfile {
         picture: Picture,
     }
 
@@ -122,7 +118,7 @@ where
     }
 
     let helper = Helper::deserialize(deserializer)?;
-    Ok(helper.mini_profile.picture.vector_image.root_url)
+    Ok(helper.picture.vector_image.root_url)
 }
 #[derive(serde::Deserialize)]
 pub struct LanguageView {

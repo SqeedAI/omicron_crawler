@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::io::Read;
+use std::io::{Read, Write};
 
 pub fn load_cookies() -> Option<String> {
     let mut file = match std::fs::File::open("cookie.dat") {
@@ -15,6 +15,20 @@ pub fn load_cookies() -> Option<String> {
         return None;
     }
     Some(cookies)
+}
+
+pub fn save_cookies(cookies: &[u8]) {
+    let mut file = match std::fs::File::create("cookies.dat") {
+        Ok(file) => file,
+        Err(e) => {
+            error!("Failed to open cookies file {}", e);
+            return;
+        }
+    };
+    if let Err(e) = file.write_all(cookies) {
+        error!("Failed to write cookies file {}", e);
+        return;
+    }
 }
 
 pub fn cookies_session_id(cookies: &str) -> Option<String> {
