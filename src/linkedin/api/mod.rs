@@ -3,9 +3,10 @@ mod utils;
 
 use crate::errors::CrawlerError::SessionError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, Skill, SkillView};
+use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
+use actix_web::web::Json;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
 use reqwest::cookie::CookieStore as CookieStoreTrait;
@@ -134,8 +135,9 @@ impl LinkedinSession {
         Ok(profile)
     }
 
-    pub async fn search_people(&self, params: SearchParams) {
+    pub async fn search_people(&self, params: SearchParams) -> CrawlerResult<SearchResult> {
         let mut filters = Vec::<String>::new();
+        const ITEM_PER_PAGE: u32 = 10;
         filters.push(String::from("(key:resultType,value:List(PEOPLE))".to_string()));
         if let Some(keyword_first_name) = params.keyword_first_name {
             filters.push(format!("(key:firstName,value:List({}))", keyword_first_name))
@@ -152,23 +154,52 @@ impl LinkedinSession {
         if let Some(keyword_school) = params.keyword_school {
             filters.push(format!("(key:school,value:List({}))", keyword_school))
         }
-        if let Some(regions) = params.regions {
-            filters.push(format!("(key:geoUrn,value:List({}))", regions.join(" | ")))
+        if let Some(countries) = params.countries {
+            filters.push(format!(
+                "(key:geoUrn,value:List({}))",
+                countries.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" | ")
+            ))
+        }
+        if let Some(profile_language) = params.profile_language {
+            filters.push(format!("(key:profileLanguage,value:List({}))", profile_language.join(" | ")))
         }
         let filter_params = format!("List({})", filters.join(","));
         let keywords = params.keywords.unwrap_or_else(|| "".to_string());
-        let endpoint = format!(
-            "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
-            Self::API_URL,
-            params.page,
-            keywords,
-            filter_params
-        );
-        let headers = Self::create_default_headers(Some(&self.session_id));
-        match self.client.get(endpoint).headers(headers).send().await {
-            Ok(response) => println!("response: {}", response.text().await.unwrap()),
-            Err(e) => error!("Failed to get search result {}", e),
+        let mut current_offset = if params.page == 0 { 1 } else { params.page * ITEM_PER_PAGE };
+        let total_offset = params.end * ITEM_PER_PAGE;
+        let mut search_response = SearchResult {
+            elements: Vec::with_capacity((total_offset - current_offset) as usize),
+            total: 0,
         };
+        info!("searching {} from total {}", current_offset, total_offset);
+        while current_offset < total_offset {
+            let endpoint = format!(
+                "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
+                Self::API_URL,
+                current_offset,
+                keywords,
+                filter_params
+            );
+            let headers = Self::create_default_headers(Some(&self.session_id));
+
+            let response = match self.client.get(endpoint).headers(headers).send().await {
+                Ok(response) => match response.json::<SearchResult>().await {
+                    Ok(result) => result,
+                    Err(e) => return Err(SessionError(format!("search people parse failed: {:?}", e))),
+                },
+                Err(e) => return Err(SessionError(format!("search people failed {:?}", e))),
+            };
+            for item in response.elements.iter() {
+                search_response.elements.push(item.clone());
+            }
+            search_response.total = response.total;
+            current_offset += ITEM_PER_PAGE;
+            if current_offset > total_offset {
+                current_offset = total_offset;
+            }
+            debug!("offset: {}, total: {}", current_offset, total_offset);
+        }
+        Ok(search_response)
     }
 
     pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {

@@ -2,7 +2,7 @@
 extern crate log;
 
 use log::LevelFilter;
-use omicron_crawler::linkedin::api::json::SearchParams;
+use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchParams};
 use omicron_crawler::linkedin::api::LinkedinSession;
 use omicron_crawler::logger::Logger;
 
@@ -14,19 +14,33 @@ use omicron_crawler::logger::Logger;
 async fn main() {
     Logger::init(LevelFilter::Trace);
     let session = LinkedinSession::new();
-    session
+    let search_result = match session
         .search_people(SearchParams {
-            page: 1,
+            page: 0,
             keywords: Some("Java".to_string()),
             keyword_first_name: Some("Tomas".to_string()),
             keyword_last_name: None,
             keyword_title: None,
             keyword_company: None,
             keyword_school: None,
-            regions: None,
+            countries: Some(vec![GeoUrnMap::Slovakia]),
+            profile_language: None,
+            end: 2,
         })
-        .await;
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to search people {}", e),
+    };
 
+    println!("{}", search_result.total);
+    println!("{}", search_result.elements.len());
+    for item in search_result.elements.iter() {
+        println!(
+            "{}\n{}\n {}\n {:?}\n {}\n\n",
+            item.first_name, item.last_name, item.subtitle, item.summary, item.url
+        );
+    }
     // load_env();
     //
     // let env = get_env().await;

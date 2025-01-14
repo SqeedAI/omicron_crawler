@@ -1,14 +1,43 @@
 use serde::Deserialize;
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+
+pub enum GeoUrnMap {
+    Czechia,
+    Slovakia,
+}
+
+impl Display for GeoUrnMap {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GeoUrnMap::Czechia => write!(f, "104508036"),
+            GeoUrnMap::Slovakia => write!(f, "103119917"),
+        }
+    }
+}
+impl FromStr for GeoUrnMap {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "czechia" => Ok(GeoUrnMap::Czechia),
+            "slovakia" => Ok(GeoUrnMap::Slovakia),
+            _ => Err(()),
+        }
+    }
+}
 
 pub struct SearchParams {
+    pub countries: Option<Vec<GeoUrnMap>>,
     pub keywords: Option<String>,
     pub keyword_first_name: Option<String>,
     pub keyword_last_name: Option<String>,
     pub keyword_title: Option<String>,
     pub keyword_company: Option<String>,
     pub keyword_school: Option<String>,
-    pub regions: Option<Vec<String>>,
+    pub profile_language: Option<Vec<String>>,
     pub page: u32,
+    pub end: u32,
 }
 #[derive(serde::Deserialize)]
 pub struct FetchCookiesResponse {
@@ -211,16 +240,60 @@ pub struct Publication {
     pub publisher: String,
     pub url: String,
 }
-
-#[derive(serde::Deserialize)]
 pub struct SearchResult {
-    #[serde(rename = "data.searchDashClustersByAll.elements")]
-    pub elements: Vec<SearchMetaItem>,
+    pub elements: Vec<SearchItem>,
+    pub total: u64,
 }
-#[derive(serde::Deserialize)]
-pub struct SearchMetaItem {
-    #[serde(deserialize_with = "deserialize_search_item")]
-    pub items: Vec<SearchItem>,
+impl<'de> Deserialize<'de> for SearchResult {
+    fn deserialize<D>(deserializer: D) -> Result<SearchResult, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct Root {
+            data: Data,
+        }
+
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all(deserialize = "camelCase"))]
+        struct Data {
+            search_dash_clusters_by_all: SearchDashClusters,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct SearchDashClusters {
+            elements: Vec<SearchMetaItem>,
+            metadata: Metadata,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all(deserialize = "camelCase"))]
+        struct Metadata {
+            total_result_count: u64,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct SearchMetaItem {
+            #[serde(deserialize_with = "deserialize_search_item")]
+            pub items: Vec<SearchItem>,
+        }
+
+        // Deserialize into the intermediate structure
+        let root = Root::deserialize(deserializer)?;
+
+        if (root.data.search_dash_clusters_by_all.elements.len() == 0) {
+            return Ok(SearchResult {
+                elements: Vec::new(),
+                total: 0,
+            });
+        }
+        let mut items = Vec::with_capacity(root.data.search_dash_clusters_by_all.elements[0].items.len());
+        let total = root.data.search_dash_clusters_by_all.metadata.total_result_count;
+        for item in root.data.search_dash_clusters_by_all.elements[0].items.iter() {
+            items.push(item.clone());
+        }
+
+        Ok(SearchResult { elements: items, total })
+    }
 }
 
 fn deserialize_search_item<'de, D>(deserializer: D) -> Result<Vec<SearchItem>, D::Error>
@@ -228,39 +301,65 @@ where
     D: serde::Deserializer<'de>,
 {
     #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
     struct ItemInner {
-        #[serde(rename = "item.entityResult.title.text")]
-        pub full_name: String,
-        #[serde(rename = "item.entityResult.primarySubtitle.text")]
-        pub sub_title: String,
-        #[serde(rename = "item.entityResult.summary.text")]
-        pub summary: String,
-        #[serde(rename = "item.entityResult.navigationUrl")]
-        pub url: String,
+        item: ItemEntity,
     }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
+    struct ItemEntity {
+        entity_result: Item,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
+    struct Item {
+        pub title: Title,
+        pub primary_subtitle: PrimarySubtitle,
+        pub summary: Option<Summary>,
+        pub navigation_url: String,
+    }
+    #[derive(serde::Deserialize)]
+    struct Title {
+        pub text: String,
+    }
+    #[derive(serde::Deserialize)]
+
+    struct PrimarySubtitle {
+        pub text: String,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct Summary {
+        pub text: String,
+    }
+
     //TODO possible case with three names
     let items: Vec<ItemInner> = Vec::deserialize(deserializer)?;
     let mut out = Vec::with_capacity(items.len());
     for item_inner in items {
-        let mut name_split = item_inner.full_name.split(" ");
+        let mut name_split = item_inner.item.entity_result.title.text.split(" ");
         let first_name = name_split.next().unwrap().to_string();
         let last_name = name_split.next().unwrap().to_string();
+        let summary = match item_inner.item.entity_result.summary {
+            Some(summary) => Some(summary.text),
+            None => None,
+        };
         out.push(SearchItem {
             first_name,
             last_name,
-            title: item_inner.sub_title,
-            summary: item_inner.summary,
-            url: item_inner.url,
+            subtitle: item_inner.item.entity_result.primary_subtitle.text,
+            summary,
+            url: item_inner.item.entity_result.navigation_url,
         });
     }
     Ok(out)
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct SearchItem {
     pub first_name: String,
     pub last_name: String,
-    pub title: String,
-    pub summary: String,
+    pub subtitle: String,
+    pub summary: Option<String>,
     pub url: String,
 }
