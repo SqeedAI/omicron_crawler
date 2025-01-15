@@ -1,3 +1,4 @@
+use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchParams};
 use omicron_crawler::linkedin::api::LinkedinSession;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -159,4 +160,30 @@ pub async fn api_profile_test_4() {
     };
     assert_eq!(profile.profile.first_name, "Kamil");
     assert_eq!(profile.profile.last_name, "Pšenák");
+}
+
+#[tokio::test]
+async fn test_search_people() {
+    let session = LinkedinSession::new();
+    let search_result = match session
+        .search_people(SearchParams {
+            page: 0,
+            keywords: Some("Java".to_string()),
+            keyword_first_name: Some("Tomas".to_string()),
+            keyword_last_name: None,
+            keyword_title: None,
+            keyword_company: None,
+            keyword_school: None,
+            countries: Some(vec![GeoUrnMap::Slovakia]),
+            profile_language: None,
+            end: 2,
+        })
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to search people {}", e),
+    };
+
+    assert!(search_result.total > 0);
+    assert!(search_result.elements.len() > 0);
 }

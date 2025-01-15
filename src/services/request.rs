@@ -17,8 +17,8 @@ pub struct Search {
 }
 
 #[derive(serde::Deserialize, Debug)]
-pub struct Url {
-    sales_url: String,
+pub struct ProfileUrl {
+    url: String,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -87,7 +87,7 @@ pub async fn search(search_params: Json<Search>) -> HttpResponse {
 }
 
 #[post("/profiles")]
-pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
+pub async fn profiles(url_requests: Json<Vec<ProfileUrl>>) -> HttpResponse {
     let url_request = url_requests.into_inner();
     let parsed_profiles = thread::scope(|s| {
         let mut response_profiles = Vec::new();
@@ -111,7 +111,7 @@ pub async fn profiles(url_requests: Json<Vec<Url>>) -> HttpResponse {
                                 return Err(CrawlerError::DriverError("No free crawlers available, try again later".to_string()));
                             }
                         };
-                        let result = crawler.parse_profile(url.sales_url.as_str()).await;
+                        let result = crawler.parse_profile(url.url.as_str()).await;
                         result
                     })
                 }));

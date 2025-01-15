@@ -26,7 +26,7 @@ impl FromStr for GeoUrnMap {
         }
     }
 }
-
+#[derive(serde::Deserialize)]
 pub struct SearchParams {
     pub countries: Option<Vec<GeoUrnMap>>,
     pub keywords: Option<String>,

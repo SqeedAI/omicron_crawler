@@ -2,8 +2,7 @@
 extern crate log;
 
 use log::LevelFilter;
-use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchParams};
-use omicron_crawler::linkedin::api::LinkedinSession;
+use omicron_crawler::azure::AzureClient;
 use omicron_crawler::logger::Logger;
 
 //TODO
@@ -13,34 +12,11 @@ use omicron_crawler::logger::Logger;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(LevelFilter::Trace);
-    let session = LinkedinSession::new();
-    let search_result = match session
-        .search_people(SearchParams {
-            page: 0,
-            keywords: Some("Java".to_string()),
-            keyword_first_name: Some("Tomas".to_string()),
-            keyword_last_name: None,
-            keyword_title: None,
-            keyword_company: None,
-            keyword_school: None,
-            countries: Some(vec![GeoUrnMap::Slovakia]),
-            profile_language: None,
-            end: 2,
-        })
-        .await
-    {
-        Ok(result) => result,
-        Err(e) => panic!("Failed to search people {}", e),
+    let azure_client = AzureClient::new();
+    let response = match azure_client.dequeue_search().await {
+        Ok(response) => response,
+        Err(e) => panic!("Failed to dequeue profile {}", e),
     };
-
-    println!("{}", search_result.total);
-    println!("{}", search_result.elements.len());
-    for item in search_result.elements.iter() {
-        println!(
-            "{}\n{}\n {}\n {:?}\n {}\n\n",
-            item.first_name, item.last_name, item.subtitle, item.summary, item.url
-        );
-    }
     // load_env();
     //
     // let env = get_env().await;
