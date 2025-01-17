@@ -49,7 +49,10 @@ pub async fn api_profile_test_1() {
     println!("{}", profile.profile.picture_url);
     assert_eq!(profile.education_view.elements.len(), 1);
     assert_eq!(profile.education_view.elements[0].school_name, "University of Zilina");
-    assert_eq!(profile.education_view.elements[0].field_of_study, "Applied Computer Science");
+    assert_eq!(
+        profile.education_view.elements[0].field_of_study,
+        Some("Applied Computer Science".to_string())
+    );
     assert_eq!(profile.education_view.elements[0].degree_name, Some("PhD".to_string()));
     assert_eq!(
         profile.education_view.elements[0].time_period.start_date.as_ref().unwrap().year,

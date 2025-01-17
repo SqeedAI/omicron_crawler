@@ -32,7 +32,7 @@ async fn crawl_profile(profiles: ProfileIds, linkedin_session: Arc<LinkedinSessi
         let mut crawled_profile = match linkedin_session.profile(profile.as_str()).await {
             Ok(profile) => profile,
             Err(e) => {
-                error!("Failed to crawl profile {}", e);
+                error!("Failed to crawl profile {} reason: {}", profile, e);
                 continue;
             }
         };
@@ -40,7 +40,7 @@ async fn crawl_profile(profiles: ProfileIds, linkedin_session: Arc<LinkedinSessi
         let skills = match linkedin_session.skills(profile.as_str()).await {
             Ok(skills) => Some(skills),
             Err(e) => {
-                error!("Failed to crawl skills {}", e);
+                error!("Failed to crawl skills {} reason:{}", profile, e);
                 None
             }
         };

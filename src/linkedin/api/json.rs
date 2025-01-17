@@ -108,7 +108,7 @@ pub struct EducationView {
 pub struct Education {
     pub degree_name: Option<String>,
     pub school_name: String,
-    pub field_of_study: String,
+    pub field_of_study: Option<String>,
     pub school_urn: String,
     pub time_period: TimePeriod,
 }
@@ -125,7 +125,7 @@ pub struct ProjectView {
 pub struct Project {
     pub title: String,
     pub description: String,
-    pub url: String,
+    pub url: Option<String>,
     pub time_period: TimePeriod,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -258,7 +258,7 @@ pub struct Publication {
     pub date: Date,
     pub name: String,
     pub publisher: String,
-    pub url: String,
+    pub url: Option<String>,
 }
 #[derive(serde::Serialize)]
 pub struct SearchResult {
