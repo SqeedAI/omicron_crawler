@@ -7,6 +7,7 @@ use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Pro
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
 use actix_web::web::Json;
+use cookie::Cookie;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
 use reqwest::cookie::CookieStore as CookieStoreTrait;
@@ -57,6 +58,9 @@ impl LinkedinSession {
     async fn obtain_session_id(&mut self) -> CrawlerResult<()> {
         let auth_url = format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate");
         let default_headers = Self::create_default_headers(None);
+        // Assuming you're using reqwest's cookie store or similar
+        let url = Url::parse(Self::LINKEDIN_URL).unwrap();
+
         let response = fatal_unwrap_e!(
             self.client.get(auth_url).headers(default_headers).send().await,
             "Failed to obtain linkedin set-cookies {}"
@@ -66,6 +70,11 @@ impl LinkedinSession {
             let text = response.text().await.unwrap();
             return Err(SessionError(format!("Failed to obtain linkedin set-cookies {} {}", status, text)));
         }
+        println!("{:?}", response.headers());
+
+        let raw_set_cookies = response.headers().get("set-cookie").unwrap();
+        println!("Raw: {:?}", raw_set_cookies);
+
         let auth_response = match response.json::<FetchCookiesResponse>().await {
             Ok(response) => response,
             Err(e) => {
@@ -73,11 +82,14 @@ impl LinkedinSession {
             }
         };
         if auth_response.status != "success" {
-            return Err(SessionError(format!("Failed to authenticate {}", auth_response.status)));
+            return Err(SessionError(format!("Failed to obtain session_id {}", auth_response.status)));
         }
+
         let cookies = self.cookie_store.lock().unwrap();
-        let session_id = cookies.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID").unwrap();
-        self.session_id = session_id.value().to_string();
+        let session_id_cookie = cookies.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID").unwrap();
+
+        let cookie_raw = session_id_cookie.value();
+        self.session_id = cookie_raw.replace("\"", "").to_string();
         Ok(())
     }
 
@@ -232,12 +244,20 @@ impl LinkedinSession {
         let mut cookie_store = CookieStore::new(None);
         let mut session_id = "".to_string();
         let mut is_auth = false;
+        let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
 
+        let mut cookie = Cookie::new("lang", "v=2&lang=en-us");
+
+        // Set the attributes
+        cookie.set_domain(Self::COOKIE_DOMAIN); // Domain=linkedin.com
+        cookie.set_path("/"); // Path=/
+        cookie.set_secure(true); // Secure
+        cookie.set_same_site(cookie::SameSite::None); // SameSite=None
         if let Some(cookies) = load_cookies() {
             if let Some(found_session_id) = cookies_session_id(&cookies) {
                 info!("Found cookies, using them");
                 session_id = found_session_id;
-                let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
+
                 let cookie_list = cookies.split(";").collect::<Vec<&str>>();
                 for cookie in cookie_list {
                     if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {

@@ -1,3 +1,4 @@
+use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -66,6 +67,9 @@ pub struct TimePeriod {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Profile {
+    #[serde(rename(deserialize = "patentView"))]
+    #[serde(deserialize_with = "deserialize_profile_urn")]
+    pub profile_urn: String,
     pub education_view: EducationView,
     pub organization_view: OrganizationView,
     pub project_view: ProjectView,
@@ -80,6 +84,20 @@ pub struct Profile {
     pub volunteer_experience_view: VolunteerExperienceView,
     pub publication_view: PublicationView,
 }
+
+fn deserialize_profile_urn<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
+    struct PatentView {
+        profile_id: String,
+    }
+    let patent_view = PatentView::deserialize(deserializer)?;
+    Ok(patent_view.profile_id)
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct EducationView {
     pub elements: Vec<Education>,
@@ -88,7 +106,7 @@ pub struct EducationView {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Education {
-    pub degree_name: String,
+    pub degree_name: Option<String>,
     pub school_name: String,
     pub field_of_study: String,
     pub school_urn: String,
@@ -320,6 +338,7 @@ where
         pub primary_subtitle: PrimarySubtitle,
         pub summary: Option<Summary>,
         pub navigation_url: String,
+        pub entity_urn: String,
     }
     #[derive(serde::Deserialize)]
     struct Title {
@@ -347,12 +366,29 @@ where
             Some(summary) => Some(summary.text),
             None => None,
         };
+
+        let regex = Regex::new("urn:li:fsd_profile:([^,]+),").unwrap();
+        let urn = match regex.captures(item_inner.item.entity_result.entity_urn.as_str()) {
+            Some(capture) => match capture.get(1) {
+                Some(matched_urn) => matched_urn.as_str(),
+                None => {
+                    error!("Failed to retrieve item urn, failed match!");
+                    continue;
+                }
+            },
+            None => {
+                error!("Failed to retrieve item urn!");
+                continue;
+            }
+        };
+
         out.push(SearchItem {
             first_name,
             last_name,
             subtitle: item_inner.item.entity_result.primary_subtitle.text,
             summary,
             url: item_inner.item.entity_result.navigation_url,
+            profile_urn: urn.to_string(),
         });
     }
     Ok(out)
@@ -365,4 +401,5 @@ pub struct SearchItem {
     pub subtitle: String,
     pub summary: Option<String>,
     pub url: String,
+    pub profile_urn: String,
 }

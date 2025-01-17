@@ -1,4 +1,4 @@
-mod json;
+pub mod json;
 
 // TODO Refactor services into another crate
 use crate::azure::json::ProfileIds;
@@ -71,7 +71,7 @@ impl AzureClient {
     pub fn new() -> Self {
         Self { client: Client::new() }
     }
-    pub async fn dequeue_profile(&self) -> Result<ProfileIds, String> {
+    pub async fn dequeue_profile(&self) -> Result<Option<ProfileIds>, String> {
         let sas_token = match create_service_bus_sas_token(PROFILE_URI, SAS_KEY_NAME, SAS_PROFILE_KEY) {
             Ok(token) => token,
             Err(e) => return Err(e.to_string()),
@@ -83,10 +83,15 @@ impl AzureClient {
             .send()
             .await
         {
-            Ok(response) => match response.json::<ProfileIds>().await {
-                Ok(profile) => Ok(profile),
-                Err(e) => Err(format!("Failed to dequeue profile {}", e)),
-            },
+            Ok(response) => {
+                if response.status() == 204 {
+                    return Ok(None);
+                }
+                match response.json::<ProfileIds>().await {
+                    Ok(profile) => Ok(Some(profile)),
+                    Err(e) => Err(format!("Failed to dequeue profile {}", e)),
+                }
+            }
             Err(e) => Err(format!("Failed to dequeue profile {}", e)),
         }
     }

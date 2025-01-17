@@ -50,7 +50,7 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.education_view.elements.len(), 1);
     assert_eq!(profile.education_view.elements[0].school_name, "University of Zilina");
     assert_eq!(profile.education_view.elements[0].field_of_study, "Applied Computer Science");
-    assert_eq!(profile.education_view.elements[0].degree_name, "PhD");
+    assert_eq!(profile.education_view.elements[0].degree_name, Some("PhD".to_string()));
     assert_eq!(
         profile.education_view.elements[0].time_period.start_date.as_ref().unwrap().year,
         2005
@@ -196,6 +196,7 @@ async fn push_to_bus_search_complete_test() {
             last_name: "Stranak".to_string(),
             subtitle: "Software Engineer".to_string(),
             summary: None,
+            profile_urn: "urn:li:fsd_profile:B0B1B01A".to_string(),
             url: "https://www.linkedin.com/in/tomas-stranak-b0b1b01a".to_string(),
         }],
         total: 1,
