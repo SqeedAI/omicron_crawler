@@ -1,4 +1,5 @@
-use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchParams};
+use omicron_crawler::azure::{AzureClient, Label};
+use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::LinkedinSession;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -165,25 +166,42 @@ pub async fn api_profile_test_4() {
 #[tokio::test]
 async fn test_search_people() {
     let session = LinkedinSession::new();
-    let search_result = match session
-        .search_people(SearchParams {
-            page: 0,
-            keywords: Some("Java".to_string()),
-            keyword_first_name: Some("Tomas".to_string()),
-            keyword_last_name: None,
-            keyword_title: None,
-            keyword_company: None,
-            keyword_school: None,
-            countries: Some(vec![GeoUrnMap::Slovakia]),
-            profile_language: None,
-            end: 2,
-        })
-        .await
-    {
+    let params = SearchParams {
+        page: 0,
+        keywords: Some("Java".to_string()),
+        keyword_first_name: Some("Tomas".to_string()),
+        keyword_last_name: None,
+        keyword_title: None,
+        keyword_company: None,
+        keyword_school: None,
+        countries: Some(vec![GeoUrnMap::Slovakia]),
+        profile_language: None,
+        end: 2,
+    };
+    let search_result = match session.search_people(&params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
+}
+
+#[tokio::test]
+async fn push_to_bus_search_complete_test() {
+    let azure_client = AzureClient::new();
+    let search_result = SearchResult {
+        elements: vec![SearchItem {
+            first_name: "Tomas".to_string(),
+            last_name: "Stranak".to_string(),
+            subtitle: "Software Engineer".to_string(),
+            summary: None,
+            url: "https://www.linkedin.com/in/tomas-stranak-b0b1b01a".to_string(),
+        }],
+        total: 1,
+    };
+    match azure_client.push_to_bus(&search_result, Label::SearchComplete).await {
+        Ok(_) => {}
+        Err(e) => assert!(false, "Failed to push to bus {}", e),
+    }
 }

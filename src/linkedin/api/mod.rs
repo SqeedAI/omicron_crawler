@@ -23,6 +23,7 @@ pub struct LinkedinSession {
     session_id: String,
     client: Client,
     cookie_store: Arc<CookieStoreMutex>,
+    is_auth: bool,
 }
 //TODO Replace crawler result with api result
 
@@ -32,6 +33,10 @@ impl LinkedinSession {
     const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
 
     //TODO This should be a static place in the memory. Shouldn't be created every time
+
+    pub fn is_auth(&self) -> bool {
+        self.is_auth
+    }
 
     fn create_default_headers(csrf_token: Option<&str>) -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -138,36 +143,40 @@ impl LinkedinSession {
         Ok(profile)
     }
 
-    pub async fn search_people(&self, params: SearchParams) -> CrawlerResult<SearchResult> {
+    pub async fn search_people(&self, params: &SearchParams) -> CrawlerResult<SearchResult> {
         let mut filters = Vec::<String>::new();
+        info!("Performing search!");
         const ITEM_PER_PAGE: u32 = 10;
         filters.push(String::from("(key:resultType,value:List(PEOPLE))".to_string()));
-        if let Some(keyword_first_name) = params.keyword_first_name {
+        if let Some(keyword_first_name) = params.keyword_first_name.as_ref() {
             filters.push(format!("(key:firstName,value:List({}))", keyword_first_name))
         }
-        if let Some(keyword_last_name) = params.keyword_last_name {
+        if let Some(keyword_last_name) = params.keyword_last_name.as_ref() {
             filters.push(format!("(key:lastName,value:List({}))", keyword_last_name))
         }
-        if let Some(keyword_title) = params.keyword_title {
+        if let Some(keyword_title) = params.keyword_title.as_ref() {
             filters.push(format!("(key:title,value:List({}))", keyword_title))
         }
-        if let Some(keyword_company) = params.keyword_company {
+        if let Some(keyword_company) = params.keyword_company.as_ref() {
             filters.push(format!("(key:company,value:List({}))", keyword_company))
         }
-        if let Some(keyword_school) = params.keyword_school {
+        if let Some(keyword_school) = params.keyword_school.as_ref() {
             filters.push(format!("(key:school,value:List({}))", keyword_school))
         }
-        if let Some(countries) = params.countries {
+        if let Some(countries) = params.countries.as_ref() {
             filters.push(format!(
                 "(key:geoUrn,value:List({}))",
                 countries.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" | ")
             ))
         }
-        if let Some(profile_language) = params.profile_language {
+        if let Some(profile_language) = params.profile_language.as_ref() {
             filters.push(format!("(key:profileLanguage,value:List({}))", profile_language.join(" | ")))
         }
         let filter_params = format!("List({})", filters.join(","));
-        let keywords = params.keywords.unwrap_or_else(|| "".to_string());
+        let keywords = match params.keywords.as_ref() {
+            Some(keywords) => keywords,
+            None => "",
+        };
         let mut current_offset = if params.page == 0 { 1 } else { params.page * ITEM_PER_PAGE };
         let total_offset = params.end * ITEM_PER_PAGE;
         let mut search_response = SearchResult {
@@ -222,6 +231,7 @@ impl LinkedinSession {
     pub fn new() -> LinkedinSession {
         let mut cookie_store = CookieStore::new(None);
         let mut session_id = "".to_string();
+        let mut is_auth = false;
 
         if let Some(cookies) = load_cookies() {
             if let Some(found_session_id) = cookies_session_id(&cookies) {
@@ -235,10 +245,11 @@ impl LinkedinSession {
                     }
                 }
             }
-        }
+        };
         if let Some(cookie_session_id) = cookie_store.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
             let session_id_raw = cookie_session_id.value().to_string();
             session_id = session_id_raw.replace("\"", "");
+            is_auth = true;
         }
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);
@@ -250,6 +261,7 @@ impl LinkedinSession {
             session_id,
             client,
             cookie_store,
+            is_auth,
         }
     }
 }

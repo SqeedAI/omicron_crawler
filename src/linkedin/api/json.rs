@@ -51,19 +51,19 @@ pub struct AuthenticateResponse {
     pub challenge_url: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Date {
     pub year: i32,
     pub month: Option<i32>,
     pub day: Option<i32>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct TimePeriod {
     pub start_date: Option<Date>,
     pub end_date: Option<Date>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Profile {
     pub education_view: EducationView,
@@ -80,12 +80,12 @@ pub struct Profile {
     pub volunteer_experience_view: VolunteerExperienceView,
     pub publication_view: PublicationView,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct EducationView {
     pub elements: Vec<Education>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Education {
     pub degree_name: String,
@@ -94,15 +94,15 @@ pub struct Education {
     pub school_urn: String,
     pub time_period: TimePeriod,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct OrganizationView {}
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct ProjectView {
     pub elements: Vec<Project>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Project {
     pub title: String,
@@ -110,11 +110,11 @@ pub struct Project {
     pub url: String,
     pub time_period: TimePeriod,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct PositionView {
     pub elements: Vec<Position>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Position {
     pub title: String,
@@ -124,7 +124,7 @@ pub struct Position {
     pub company_name: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ProfileView {
     pub summary: Option<String>,
@@ -135,7 +135,7 @@ pub struct ProfileView {
     pub geo_country_name: String,
     pub headline: String,
     #[serde(deserialize_with = "deserialize_profile_url")]
-    #[serde(rename = "miniProfile")]
+    #[serde(rename(deserialize = "miniProfile"))]
     pub picture_url: String,
 }
 
@@ -172,76 +172,77 @@ where
         helper.picture.vector_image.root_url, helper.picture.vector_image.artifacts[0].file_identifying_url_path_segment
     ))
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct LanguageView {
     pub elements: Vec<Language>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Language {
     pub name: String,
     pub proficiency: Option<String>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct CertificateView {
     pub elements: Vec<Certificate>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Certificate {}
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct TestScoreView {
     pub elements: Vec<TestScore>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct TestScore {}
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct CourseView {
     pub elements: Vec<Course>,
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Course {}
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct HonorView {
     pub elements: Vec<Honor>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Honor {}
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct SkillView {
     pub elements: Vec<Skill>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Skill {
     pub name: String,
     pub entity_urn: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct VolunteerExperienceView {
     pub elements: Vec<VolunteerExperience>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct VolunteerExperience {}
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct PublicationView {
     pub elements: Vec<Publication>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Publication {
     pub date: Date,
     pub name: String,
     pub publisher: String,
     pub url: String,
 }
+#[derive(serde::Serialize)]
 pub struct SearchResult {
     pub elements: Vec<SearchItem>,
     pub total: u64,
@@ -357,7 +358,7 @@ where
     Ok(out)
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct SearchItem {
     pub first_name: String,
     pub last_name: String,
