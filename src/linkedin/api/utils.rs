@@ -18,7 +18,7 @@ pub fn load_cookies() -> Option<String> {
 }
 
 pub fn save_cookies(cookies: &[u8]) {
-    let mut file = match std::fs::File::create("cookies.dat") {
+    let mut file = match std::fs::File::create("cookie.dat") {
         Ok(file) => file,
         Err(e) => {
             error!("Failed to open cookies file {}", e);

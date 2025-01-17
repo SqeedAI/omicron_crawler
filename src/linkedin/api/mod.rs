@@ -111,7 +111,10 @@ impl LinkedinSession {
         };
 
         if response_data.login_result != "PASS" {
-            return Err(SessionError(format!("Failed to authenticate {}", response_data.login_result)));
+            return Err(SessionError(format!(
+                "Failed to authenticate {} {}",
+                response_data.login_result, response_data.challenge_url
+            )));
         }
         let url = Url::parse(Self::LINKEDIN_URL).unwrap();
         let cookies = self.cookie_store.cookies(&url).unwrap();
@@ -232,6 +235,10 @@ impl LinkedinSession {
                     }
                 }
             }
+        }
+        if let Some(cookie_session_id) = cookie_store.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
+            let session_id_raw = cookie_session_id.value().to_string();
+            session_id = session_id_raw.replace("\"", "");
         }
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);

@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 pub enum GeoUrnMap {
-    Czechia,
-    Slovakia,
+    Czechia = 104508036,
+    Slovakia = 103119917,
 }
 
 impl Display for GeoUrnMap {
@@ -15,14 +15,16 @@ impl Display for GeoUrnMap {
         }
     }
 }
-impl FromStr for GeoUrnMap {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+impl<'de> Deserialize<'de> for GeoUrnMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
             "czechia" => Ok(GeoUrnMap::Czechia),
             "slovakia" => Ok(GeoUrnMap::Slovakia),
-            _ => Err(()),
+            _ => Err(serde::de::Error::custom("invalid value")),
         }
     }
 }
