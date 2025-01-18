@@ -2,7 +2,7 @@ pub mod json;
 
 // TODO Refactor services into another crate
 use crate::azure::json::ProfileIds;
-use crate::errors::CrawlerError::BusError;
+use crate::errors::CrawlerError::{BusError, QueueError};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::SearchParams;
 use base64::prelude::BASE64_STANDARD;
@@ -71,10 +71,10 @@ impl AzureClient {
     pub fn new() -> Self {
         Self { client: Client::new() }
     }
-    pub async fn dequeue_profile(&self) -> Result<Option<ProfileIds>, String> {
+    pub async fn dequeue_profile(&self) -> CrawlerResult<Option<ProfileIds>> {
         let sas_token = match create_service_bus_sas_token(PROFILE_URI, SAS_KEY_NAME, SAS_PROFILE_KEY) {
             Ok(token) => token,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(QueueError(e.to_string())),
         };
         match self
             .client
@@ -89,18 +89,16 @@ impl AzureClient {
                 }
                 match response.json::<ProfileIds>().await {
                     Ok(profile) => Ok(Some(profile)),
-                    Err(e) => Err(format!("Failed to dequeue profile {}", e)),
+                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
                 }
             }
-            Err(e) => Err(format!("Failed to dequeue profile {}", e)),
+            Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
         }
     }
-
-    //TODO Use crawler error or own error type
-    pub async fn dequeue_search(&self) -> Result<Option<SearchParams>, String> {
+    pub async fn dequeue_search(&self) -> CrawlerResult<Option<SearchParams>> {
         let sas_token = match create_service_bus_sas_token(SEARCH_URI, SAS_KEY_NAME, SAS_SEARCH_KEY) {
             Ok(token) => token,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => return Err(QueueError(e.to_string())),
         };
 
         match self
@@ -116,10 +114,10 @@ impl AzureClient {
                 }
                 match response.json::<SearchParams>().await {
                     Ok(params) => Ok(Some(params)),
-                    Err(e) => Err(format!("Failed to dequeue profile {}", e)),
+                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
                 }
             }
-            Err(e) => Err(format!("Failed to dequeue profile {}", e)),
+            Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
         }
     }
 
