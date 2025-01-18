@@ -58,8 +58,6 @@ impl LinkedinSession {
     async fn obtain_session_id(&mut self) -> CrawlerResult<()> {
         let auth_url = format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate");
         let default_headers = Self::create_default_headers(None);
-        // Assuming you're using reqwest's cookie store or similar
-        let url = Url::parse(Self::LINKEDIN_URL).unwrap();
 
         let response = fatal_unwrap_e!(
             self.client.get(auth_url).headers(default_headers).send().await,
@@ -248,7 +246,7 @@ impl LinkedinSession {
 
         let mut cookie = Cookie::new("lang", "v=2&lang=en-us");
 
-        // Set the attributes
+        // Set the attributes. These are necessary as linkedin checks for all of them. Otherwise we get 401 Unauthorized
         cookie.set_domain(Self::COOKIE_DOMAIN); // Domain=linkedin.com
         cookie.set_path("/"); // Path=/
         cookie.set_secure(true); // Secure
