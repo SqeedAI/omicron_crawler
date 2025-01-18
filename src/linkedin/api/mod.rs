@@ -26,18 +26,16 @@ pub struct LinkedinSession {
     cookie_store: Arc<CookieStoreMutex>,
     is_auth: bool,
 }
-//TODO Replace crawler result with api result
 
 impl LinkedinSession {
     const LINKEDIN_URL: &'static str = "https://www.linkedin.com";
     const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
     const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
 
-    //TODO This should be a static place in the memory. Shouldn't be created every time
-
     pub fn is_auth(&self) -> bool {
         self.is_auth
     }
+    //TODO This should be a static place in the memory. Shouldn't be created every time
 
     fn create_default_headers(csrf_token: Option<&str>) -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -252,15 +250,10 @@ impl LinkedinSession {
         cookie.set_secure(true); // Secure
         cookie.set_same_site(cookie::SameSite::None); // SameSite=None
         if let Some(cookies) = load_cookies() {
-            if let Some(found_session_id) = cookies_session_id(&cookies) {
-                info!("Found cookies, using them");
-                session_id = found_session_id;
-
-                let cookie_list = cookies.split(";").collect::<Vec<&str>>();
-                for cookie in cookie_list {
-                    if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {
-                        error!("Failed to parse cookie {}", code);
-                    }
+            let cookie_list = cookies.split(";").collect::<Vec<&str>>();
+            for cookie in cookie_list {
+                if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {
+                    error!("Failed to parse cookie {}", code);
                 }
             }
         };
