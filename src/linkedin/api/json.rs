@@ -218,7 +218,6 @@ pub struct TestScoreView {
     pub elements: Vec<TestScore>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all(deserialize = "camelCase"))]
 pub struct TestScore {
     pub name: String,
     pub description: Option<String>,
