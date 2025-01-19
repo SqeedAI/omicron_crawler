@@ -205,14 +205,25 @@ pub struct CertificateView {
     pub elements: Vec<Certificate>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct Certificate {}
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct Certificate {
+    pub authority: String,
+    pub name: String,
+    pub time_period: Option<TimePeriod>,
+    pub display_source: Option<String>,
+    pub url: Option<String>,
+}
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct TestScoreView {
     pub elements: Vec<TestScore>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
-pub struct TestScore {}
+pub struct TestScore {
+    pub name: String,
+    pub description: Option<String>,
+    pub score: String,
+}
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct CourseView {
     pub elements: Vec<Course>,
@@ -271,7 +282,7 @@ pub struct PublicationView {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Publication {
-    pub date: Date,
+    pub date: Option<Date>,
     pub name: String,
     pub publisher: String,
     pub url: Option<String>,
