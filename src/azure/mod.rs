@@ -2,6 +2,7 @@ pub mod json;
 
 // TODO Refactor services into another crate
 use crate::azure::json::ProfileIds;
+use crate::env::get_env;
 use crate::errors::CrawlerError::{BusError, QueueError};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::SearchParams;
@@ -14,18 +15,7 @@ use sha2::Sha256;
 use std::fmt::{Display, Formatter};
 use std::time::{SystemTime, UNIX_EPOCH};
 use urlencoding::encode;
-
-const SEARCH_URI: &str = "https://sqeed-dev-bus.servicebus.windows.net/search/";
-const SEARCH_DEQUEUE_API: &str = "https://sqeed-dev-bus.servicebus.windows.net/search/messages/head";
-const PROFILE_URI: &str = "https://sqeed-dev-bus.servicebus.windows.net/profile/";
-const PROFILE_DEQUEUE_API: &str = "https://sqeed-dev-bus.servicebus.windows.net/profile/messages/head";
-const MANAGER_BUS_URI: &str = "https://sqeed-dev-bus.servicebus.windows.net/manager/";
-const MANAGER_BUS_API: &str = "https://sqeed-dev-bus.servicebus.windows.net/manager/messages";
-const MANAGER_BUS_KEY: &str = "bC3swcT8ywbPHpNgSx4eJVG6tkhBtlC8b+ASbLzwa+4=";
-const SAS_KEY_NAME: &str = "rw";
-const SAS_PROFILE_KEY: &str = "xIf1mAf1YIRFq8WoUk4me4yG2XILTDUH7+ASbJl066Y=";
-const SAS_SEARCH_KEY: &str = "kZxuQJeumvq2r7n+s7uhSENCDJIEdYjf6+ASbD/itM4=";
-fn create_service_bus_sas_token(resource_uri: &str, sas_key_name: &str, sas_key: &str) -> Result<String, &'static str> {
+fn create_sas_token(resource_uri: &str, sas_key_name: &str, sas_key: &str) -> Result<String, &'static str> {
     let encoded_uri = encode(resource_uri);
 
     let ttl = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 60;
@@ -50,6 +40,16 @@ fn create_service_bus_sas_token(resource_uri: &str, sas_key_name: &str, sas_key:
 }
 
 pub struct AzureClient {
+    manager_bus_uri: &'static str,
+    manager_bus_api: &'static str,
+    manager_bus_key: &'static str,
+    sas_key_name: &'static str,
+    sas_profile_key: &'static str,
+    sas_search_key: &'static str,
+    search_uri: &'static str,
+    search_dequeue_api: &'static str,
+    profile_uri: &'static str,
+    profile_dequeue_api: &'static str,
     client: Client,
 }
 
@@ -68,17 +68,39 @@ impl Display for Label {
 }
 
 impl AzureClient {
-    pub fn new() -> Self {
-        Self { client: Client::new() }
+    pub async fn new() -> Self {
+        let manager_bus_uri = get_env().await.azure_manager_bus_uri.as_str();
+        let manager_bus_api = get_env().await.azure_manager_bus_api.as_str();
+        let manager_bus_key = get_env().await.azure_manager_bus_key.as_str();
+        let sas_key_name = get_env().await.azure_sas_key_name.as_str();
+        let sas_profile_key = get_env().await.azure_sas_profile_key.as_str();
+        let sas_search_key = get_env().await.azure_sas_search_key.as_str();
+        let search_uri = get_env().await.azure_search_uri.as_str();
+        let search_dequeue_api = get_env().await.azure_search_dequeue_api.as_str();
+        let profile_uri = get_env().await.azure_profile_uri.as_str();
+        let profile_dequeue_api = get_env().await.azure_profile_dequeue_api.as_str();
+        Self {
+            manager_bus_uri,
+            manager_bus_api,
+            manager_bus_key,
+            sas_key_name,
+            sas_profile_key,
+            sas_search_key,
+            search_uri,
+            search_dequeue_api,
+            profile_uri,
+            profile_dequeue_api,
+            client: Client::new(),
+        }
     }
     pub async fn dequeue_profile(&self) -> CrawlerResult<Option<ProfileIds>> {
-        let sas_token = match create_service_bus_sas_token(PROFILE_URI, SAS_KEY_NAME, SAS_PROFILE_KEY) {
+        let sas_token = match create_sas_token(self.profile_uri, self.sas_key_name, self.sas_profile_key) {
             Ok(token) => token,
             Err(e) => return Err(QueueError(e.to_string())),
         };
         match self
             .client
-            .delete(PROFILE_DEQUEUE_API)
+            .delete(self.profile_dequeue_api)
             .header("Authorization", sas_token)
             .send()
             .await
@@ -96,14 +118,14 @@ impl AzureClient {
         }
     }
     pub async fn dequeue_search(&self) -> CrawlerResult<Option<SearchParams>> {
-        let sas_token = match create_service_bus_sas_token(SEARCH_URI, SAS_KEY_NAME, SAS_SEARCH_KEY) {
+        let sas_token = match create_sas_token(self.search_uri, self.sas_key_name, self.sas_search_key) {
             Ok(token) => token,
             Err(e) => return Err(QueueError(e.to_string())),
         };
 
         match self
             .client
-            .delete(SEARCH_DEQUEUE_API)
+            .delete(self.search_dequeue_api)
             .header("Authorization", sas_token)
             .send()
             .await
@@ -125,7 +147,7 @@ impl AzureClient {
     where
         T: Serialize + Sized,
     {
-        let sas = match create_service_bus_sas_token(MANAGER_BUS_URI, SAS_KEY_NAME, MANAGER_BUS_KEY) {
+        let sas = match create_sas_token(self.manager_bus_uri, self.sas_key_name, self.manager_bus_key) {
             Ok(sas) => sas,
             Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
         };
@@ -136,7 +158,7 @@ impl AzureClient {
 
         let request = match self
             .client
-            .post(MANAGER_BUS_API)
+            .post(self.manager_bus_api)
             .header("Authorization", sas)
             .header("Content-Type", "application/json")
             .header("BrokerProperties", format!("{{\"Label\":\"{}\"}}", label))

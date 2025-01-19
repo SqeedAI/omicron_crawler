@@ -1,6 +1,7 @@
 use log::{debug, error, info};
 use omicron_crawler::azure::json::{CrawledProfiles, ProfileIds};
 use omicron_crawler::azure::{AzureClient, Label};
+use omicron_crawler::env::load_env;
 use omicron_crawler::errors::CrawlerResult;
 use omicron_crawler::fatal_assert;
 use omicron_crawler::linkedin::api::json::{SearchParams, SearchResult};
@@ -68,9 +69,10 @@ static MAXIMUM_PROFILE_CRAWLS: AtomicU8 = AtomicU8::new(2);
 static CURRENT_PROFILE_CRAWLS: AtomicU8 = AtomicU8::new(0);
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> std::io::Result<()> {
+    load_env();
     Logger::init(log::LevelFilter::Trace);
     let mut linkedin_session_raw = LinkedinSession::new();
-    let azure_client = Arc::new(AzureClient::new());
+    let azure_client = Arc::new(AzureClient::new().await);
     if !linkedin_session_raw.is_auth() {
         info!("Not authenticated, trying to authenticate");
         match linkedin_session_raw

@@ -1,4 +1,5 @@
 use omicron_crawler::azure::{AzureClient, Label};
+use omicron_crawler::env::load_env;
 use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::LinkedinSession;
 
@@ -237,7 +238,8 @@ async fn test_search_people() {
 
 #[tokio::test]
 async fn push_to_bus_search_complete_test() {
-    let azure_client = AzureClient::new();
+    load_env();
+    let azure_client = AzureClient::new().await;
     let search_result = SearchResult {
         elements: vec![SearchItem {
             first_name: "Tomas".to_string(),

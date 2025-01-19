@@ -3,6 +3,7 @@ extern crate log;
 
 use log::LevelFilter;
 use omicron_crawler::azure::AzureClient;
+use omicron_crawler::env::load_env;
 use omicron_crawler::logger::Logger;
 
 //TODO
@@ -12,7 +13,8 @@ use omicron_crawler::logger::Logger;
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     Logger::init(LevelFilter::Trace);
-    let azure_client = AzureClient::new();
+    load_env();
+    let azure_client = AzureClient::new().await;
     let response = match azure_client.dequeue_search().await {
         Ok(response) => response,
         Err(e) => panic!("Failed to dequeue profile {}", e),
