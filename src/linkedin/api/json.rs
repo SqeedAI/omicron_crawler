@@ -39,6 +39,7 @@ pub struct SearchParams {
     pub keyword_company: Option<String>,
     pub keyword_school: Option<String>,
     pub profile_language: Option<Vec<String>>,
+    pub request_metadata: Option<String>,
     pub page: u32,
     pub end: u32,
 }
@@ -263,6 +264,7 @@ pub struct Publication {
 #[derive(serde::Serialize)]
 pub struct SearchResult {
     pub elements: Vec<SearchItem>,
+    pub request_metadata: Option<String>,
     pub total: u64,
 }
 impl<'de> Deserialize<'de> for SearchResult {
@@ -303,6 +305,7 @@ impl<'de> Deserialize<'de> for SearchResult {
 
         if (root.data.search_dash_clusters_by_all.elements.len() == 0) {
             return Ok(SearchResult {
+                request_metadata: None,
                 elements: Vec::new(),
                 total: 0,
             });
@@ -313,7 +316,11 @@ impl<'de> Deserialize<'de> for SearchResult {
             items.push(item.clone());
         }
 
-        Ok(SearchResult { elements: items, total })
+        Ok(SearchResult {
+            elements: items,
+            total,
+            request_metadata: None,
+        })
     }
 }
 

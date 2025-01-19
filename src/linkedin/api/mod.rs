@@ -151,7 +151,7 @@ impl LinkedinSession {
         Ok(profile)
     }
 
-    pub async fn search_people(&self, params: &SearchParams) -> CrawlerResult<SearchResult> {
+    pub async fn search_people(&self, params: &mut SearchParams) -> CrawlerResult<SearchResult> {
         let mut filters = Vec::<String>::new();
         info!("Performing search!");
         const ITEM_PER_PAGE: u32 = 10;
@@ -189,6 +189,7 @@ impl LinkedinSession {
         let total_offset = params.end * ITEM_PER_PAGE;
         let mut search_response = SearchResult {
             elements: Vec::with_capacity((total_offset - current_offset) as usize),
+            request_metadata: params.request_metadata.take(),
             total: 0,
         };
         info!("searching {} from total {}", current_offset, total_offset);

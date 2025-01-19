@@ -1,5 +1,5 @@
 use log::{debug, error, info};
-use omicron_crawler::azure::json::ProfileIds;
+use omicron_crawler::azure::json::{CrawledProfiles, ProfileIds};
 use omicron_crawler::azure::{AzureClient, Label};
 use omicron_crawler::errors::CrawlerResult;
 use omicron_crawler::fatal_assert;
@@ -10,8 +10,8 @@ use std::collections::VecDeque;
 use std::sync::atomic::AtomicU8;
 use std::sync::Arc;
 
-async fn obtain_profiles(params: SearchParams, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
-    let result = match linkedin_session.search_people(&params).await {
+async fn obtain_profiles(mut params: SearchParams, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
+    let result = match linkedin_session.search_people(&mut params).await {
         Ok(result) => result,
         Err(e) => {
             error!("{}", e);
@@ -26,9 +26,9 @@ async fn obtain_profiles(params: SearchParams, linkedin_session: Arc<LinkedinSes
     }
 }
 
-async fn crawl_profile(profiles: ProfileIds, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
+async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
     let mut crawled_profiles = Vec::with_capacity(profiles.ids.len());
-    for profile in profiles.ids {
+    for profile in profiles.ids.iter() {
         let mut crawled_profile = match linkedin_session.profile(profile.as_str()).await {
             Ok(profile) => profile,
             Err(e) => {
@@ -49,6 +49,10 @@ async fn crawl_profile(profiles: ProfileIds, linkedin_session: Arc<LinkedinSessi
         }
         crawled_profiles.push(crawled_profile)
     }
+    let crawled_profiles = CrawledProfiles {
+        profiles: crawled_profiles,
+        request_metadata: profiles.request_metadata.take(),
+    };
     match azure_client.push_to_bus(&crawled_profiles, Label::ProfilesComplete).await {
         Ok(_) => {
             info!("Pushed profiles to bus!");
@@ -120,7 +124,7 @@ async fn main() -> std::io::Result<()> {
         {
             tokio::spawn(async move {
                 CURRENT_PROFILE_CRAWLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let profiles = match azure_client_clone.dequeue_profile().await {
+                let mut profiles = match azure_client_clone.dequeue_profile().await {
                     Ok(profiles) => match profiles {
                         Some(profiles) => profiles,
                         None => {
@@ -135,7 +139,7 @@ async fn main() -> std::io::Result<()> {
                         return;
                     }
                 };
-                crawl_profile(profiles, linkedin_session_clone, azure_client_clone).await;
+                crawl_profile(&mut profiles, linkedin_session_clone, azure_client_clone).await;
                 CURRENT_PROFILE_CRAWLS.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
             });
         }
