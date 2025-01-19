@@ -110,7 +110,7 @@ pub struct Education {
     pub degree_name: Option<String>,
     pub school_name: String,
     pub field_of_study: Option<String>,
-    pub school_urn: String,
+    pub school_urn: Option<String>,
     pub time_period: TimePeriod,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -125,7 +125,7 @@ pub struct ProjectView {
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Project {
     pub title: String,
-    pub description: String,
+    pub description: Option<String>,
     pub url: Option<String>,
     pub time_period: TimePeriod,
 }
@@ -218,8 +218,10 @@ pub struct CourseView {
     pub elements: Vec<Course>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all(deserialize = "camelCase"))]
-pub struct Course {}
+pub struct Course {
+    pub name: String,
+    pub number: Option<String>,
+}
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct HonorView {
     pub elements: Vec<Honor>,
@@ -227,7 +229,13 @@ pub struct HonorView {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
-pub struct Honor {}
+pub struct Honor {
+    description: Option<String>,
+    occupation: Option<String>,
+    title: String,
+    issuer: Option<String>,
+    issued_date: Option<Date>,
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SkillView {
@@ -247,7 +255,14 @@ pub struct VolunteerExperienceView {
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct VolunteerExperience {}
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct VolunteerExperience {
+    pub role: String,
+    pub company_name: String,
+    pub time_period: Option<TimePeriod>,
+    pub cause: Option<String>,
+    pub description: Option<String>,
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PublicationView {

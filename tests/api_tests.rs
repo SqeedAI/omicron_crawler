@@ -61,7 +61,7 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.education_view.elements[0].time_period.end_date.as_ref().unwrap().year, 2008);
     assert_eq!(profile.project_view.elements.len(), 3);
     assert_eq!(profile.project_view.elements[0].title, "JGL - A Java wrapper for OpenGL 3");
-    assert_eq!(profile.project_view.elements[0].description, "This project is inspired on and aims to provide similar functionality as the OGLPlus C++ OpenGL framework. jgl makes use of the JOGL Java library to access OpenGL in a cross platform fashion.\n\nWith jgl, you get a set of wrapper classes which abstract most of the housekeeping tasks one inevitably faces when dealing with OpenGL. This framework is primarily focused on OpenGL 3 since it is the currently accepted programming standard for OpenGL and is on par with DirectX feature wise (if not more ;)).");
+    assert_eq!(profile.project_view.elements[0].description, Some("This project is inspired on and aims to provide similar functionality as the OGLPlus C++ OpenGL framework. jgl makes use of the JOGL Java library to access OpenGL in a cross platform fashion.\n\nWith jgl, you get a set of wrapper classes which abstract most of the housekeeping tasks one inevitably faces when dealing with OpenGL. This framework is primarily focused on OpenGL 3 since it is the currently accepted programming standard for OpenGL and is on par with DirectX feature wise (if not more ;)).".to_string()));
     assert_eq!(profile.project_view.elements[0].time_period.start_date.as_ref().unwrap().year, 2011);
     assert_eq!(
         profile.project_view.elements[0]
@@ -166,10 +166,38 @@ pub async fn api_profile_test_4() {
     assert_eq!(profile.profile.last_name, "Pšenák");
 }
 
+#[tokio::test(flavor = "multi_thread")]
+pub async fn api_profile_test_5() {
+    let mut linkedin_session = LinkedinSession::new();
+    let profile = match linkedin_session.profile("tomas-danis").await {
+        Ok(profile) => profile,
+        Err(e) => {
+            assert!(false, "Failed to get profile {}", e);
+            return;
+        }
+    };
+    assert_eq!(profile.profile.first_name, "Tomáš");
+    assert_eq!(profile.profile.last_name, "Daniš");
+    assert_eq!(profile.course_view.elements.len(), 6);
+    assert_eq!(profile.course_view.elements[0].name, "Bare minimum course");
+    assert_eq!(profile.course_view.elements[1].name, "Full course");
+    assert_eq!(profile.course_view.elements[1].number, Some("FC101".to_string()));
+
+    assert_eq!(profile.volunteer_experience_view.elements.len(), 3);
+    assert_eq!(profile.volunteer_experience_view.elements[0].role, "Testing role");
+    assert_eq!(profile.volunteer_experience_view.elements[0].company_name, "sqeed");
+    assert_eq!(
+        profile.volunteer_experience_view.elements[0].description,
+        Some("Description present".to_string())
+    );
+    assert_eq!(profile.volunteer_experience_view.elements[2].role, "Role");
+    assert_eq!(profile.volunteer_experience_view.elements[2].company_name, "Bare minimum");
+}
+
 #[tokio::test]
 async fn test_search_people() {
     let session = LinkedinSession::new();
-    let params = SearchParams {
+    let mut params = SearchParams {
         page: 0,
         keywords: Some("Java".to_string()),
         keyword_first_name: Some("Tomas".to_string()),
@@ -180,8 +208,9 @@ async fn test_search_people() {
         countries: Some(vec![GeoUrnMap::Slovakia]),
         profile_language: None,
         end: 2,
+        request_metadata: None,
     };
-    let search_result = match session.search_people(&params).await {
+    let search_result = match session.search_people(&mut params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };
@@ -202,6 +231,7 @@ async fn push_to_bus_search_complete_test() {
             profile_urn: "urn:li:fsd_profile:B0B1B01A".to_string(),
             url: "https://www.linkedin.com/in/tomas-stranak-b0b1b01a".to_string(),
         }],
+        request_metadata: None,
         total: 1,
     };
     match azure_client.push_to_bus(&search_result, Label::SearchComplete).await {
