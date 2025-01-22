@@ -197,8 +197,19 @@ impl AzureClient {
             }
         };
 
-        if let Err(e) = self.client.post(api).body(json_body).send().await {
-            error!("Failed to push to manager {:?}", e);
+        match self.client.post(api).body(json_body).send().await {
+            Ok(request) => {
+                if !request.status().is_success() {
+                    error!(
+                        "Failed to push to manager with status {} body {}",
+                        request.status().as_u16(),
+                        request.text().await.unwrap()
+                    );
+                }
+            }
+            Err(e) => {
+                error!("Failed to push to manager {:?}", e);
+            }
         }
     }
 }

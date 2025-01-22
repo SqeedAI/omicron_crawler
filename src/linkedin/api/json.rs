@@ -159,7 +159,7 @@ pub struct Project {
     pub title: String,
     pub description: Option<String>,
     pub url: Option<String>,
-    pub time_period: TimePeriod,
+    pub time_period: Option<TimePeriod>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PositionView {
@@ -182,7 +182,7 @@ pub struct ProfileView {
     pub industry_name: String,
     pub first_name: String,
     pub last_name: String,
-    pub location_name: String,
+    pub location_name: Option<String>,
     pub geo_country_name: String,
     pub headline: String,
     #[serde(deserialize_with = "deserialize_profile_url")]
@@ -318,7 +318,7 @@ pub struct PublicationView {
 pub struct Publication {
     pub date: Option<Date>,
     pub name: String,
-    pub publisher: String,
+    pub publisher: Option<String>,
     pub url: Option<String>,
 }
 #[derive(serde::Serialize)]

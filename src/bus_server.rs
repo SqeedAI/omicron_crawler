@@ -37,7 +37,26 @@ async fn obtain_profiles(mut params: SearchParams, linkedin_session: Arc<Linkedi
 // Every 10th profile shall have a micro cooldown of 5 seconds (So 50 seconds - 12 minutes)
 async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
     let mut crawled_profiles = Vec::with_capacity(profiles.ids.len());
+
+    let mut cooldown_counter = 0u32;
+    let mut micro_cooldown_counter = 0u32;
+    let cooldown_trigger = 100u32;
+    let micro_cooldown_trigger = 10u32;
+
+    let micro_cooldown_time = std::time::Duration::from_secs(5);
+    let cooldown_time = std::time::Duration::from_secs(600); // 10 minutes
+
     for profile in profiles.ids.iter() {
+        if cooldown_counter >= cooldown_trigger {
+            micro_cooldown_counter = 0;
+            info!("Cooling down for {} seconds", cooldown_time.as_secs());
+            tokio::time::sleep(cooldown_time).await;
+        }
+        if micro_cooldown_counter >= micro_cooldown_trigger {
+            micro_cooldown_counter = 0;
+            info!("Micro cooling down for {} seconds", micro_cooldown_time.as_secs());
+            tokio::time::sleep(micro_cooldown_time).await;
+        }
         let mut crawled_profile = match linkedin_session.profile(profile.as_str()).await {
             Ok(profile) => profile,
             Err(e) => {
@@ -56,7 +75,9 @@ async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<Linkedin
         if let Some(skills) = skills {
             crawled_profile.skill_view = skills;
         }
-        crawled_profiles.push(crawled_profile)
+        crawled_profiles.push(crawled_profile);
+        cooldown_counter += 1;
+        micro_cooldown_counter += 1;
     }
     let crawled_profiles = CrawledProfiles {
         profiles: crawled_profiles,
@@ -77,7 +98,7 @@ async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<Linkedin
 static MAXIMUM_SEARCHES: AtomicU8 = AtomicU8::new(2);
 static CURRENT_SEARCHES: AtomicU8 = AtomicU8::new(0);
 
-static MAXIMUM_PROFILE_CRAWLS: AtomicU8 = AtomicU8::new(2);
+static MAXIMUM_PROFILE_CRAWLS: AtomicU8 = AtomicU8::new(1);
 static CURRENT_PROFILE_CRAWLS: AtomicU8 = AtomicU8::new(0);
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> std::io::Result<()> {

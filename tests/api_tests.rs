@@ -44,7 +44,7 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.profile.last_name, "Chochlik");
     assert_eq!(profile.profile.headline, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
     assert_eq!(profile.profile.geo_country_name, "Slovakia");
-    assert_eq!(profile.profile.location_name, "Slovak Republic");
+    assert_eq!(profile.profile.location_name, Some("Slovak Republic".to_string()));
     assert_eq!(profile.profile.industry_name, "Higher Education");
     assert_eq!(profile.profile.summary.as_ref().unwrap(), "Solution architect / Tech lead / SW engineer, mostly C++, Python. Member of C++ standards committee. Having experience with modern OpenGL programming and with relational database systems.\n\nSpecialties: software development, C++, meta-programming, OpenGL 4 programming");
     println!("{}", profile.profile.picture_url.unwrap());
@@ -80,10 +80,22 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.project_view.elements.len(), 3);
     assert_eq!(profile.project_view.elements[0].title, "JGL - A Java wrapper for OpenGL 3");
     assert_eq!(profile.project_view.elements[0].description, Some("This project is inspired on and aims to provide similar functionality as the OGLPlus C++ OpenGL framework. jgl makes use of the JOGL Java library to access OpenGL in a cross platform fashion.\n\nWith jgl, you get a set of wrapper classes which abstract most of the housekeeping tasks one inevitably faces when dealing with OpenGL. This framework is primarily focused on OpenGL 3 since it is the currently accepted programming standard for OpenGL and is on par with DirectX feature wise (if not more ;)).".to_string()));
-    assert_eq!(profile.project_view.elements[0].time_period.start_date.as_ref().unwrap().year, 2011);
     assert_eq!(
         profile.project_view.elements[0]
             .time_period
+            .as_ref()
+            .unwrap()
+            .start_date
+            .as_ref()
+            .unwrap()
+            .year,
+        2011
+    );
+    assert_eq!(
+        profile.project_view.elements[0]
+            .time_period
+            .as_ref()
+            .unwrap()
             .start_date
             .as_ref()
             .unwrap()
