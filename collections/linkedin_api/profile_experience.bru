@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{LINKEDIN_URL}}{{API_URL}}/graphql?variables=(profileUrn:urn%3Ali%3Afsd_profile%3A{{URN_ID}},sectionType:experience)&queryId=voyagerIdentityDashProfileComponents.7af5d6f176f11583b382e37e5639e69e&includeWebMetadata=true
+  url: {{LINKEDIN_URL}}{{API_URL}}/graphql?variables=(start:1,profileUrn:urn%3Ali%3Afsd_profile%3A{{URN_ID}},sectionType:experience)&queryId=voyagerIdentityDashProfileComponents.7af5d6f176f11583b382e37e5639e69e&includeWebMetadata=true
   body: none
   auth: none
 }
 
 params:query {
-  variables: (profileUrn:urn:li:fsd_profile:{{URN_ID}},sectionType:experience)
+  variables: (start:1,profileUrn:urn:li:fsd_profile:{{URN_ID}},sectionType:experience)
   queryId: voyagerIdentityDashProfileComponents.7af5d6f176f11583b382e37e5639e69e
   includeWebMetadata: true
 }
