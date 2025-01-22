@@ -36,8 +36,8 @@ async fn obtain_profiles(mut params: SearchParams, linkedin_session: Arc<Linkedi
 // That means 5 cooldown periods, each one is 12 minutes
 // Every 10th profile shall have a micro cooldown of 5 seconds (So 50 seconds - 12 minutes)
 async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
-    let mut crawled_profiles = Vec::with_capacity(profiles.profile_ids.len());
-    for profile in profiles.profile_ids.iter() {
+    let mut crawled_profiles = Vec::with_capacity(profiles.ids.len());
+    for profile in profiles.ids.iter() {
         let mut crawled_profile = match linkedin_session.profile(profile.as_str()).await {
             Ok(profile) => profile,
             Err(e) => {

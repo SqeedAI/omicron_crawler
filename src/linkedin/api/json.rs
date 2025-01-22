@@ -24,6 +24,21 @@ impl Display for NetworkDepth {
     }
 }
 
+impl<'de> Deserialize<'de> for NetworkDepth {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "one" => Ok(NetworkDepth::One),
+            "two" => Ok(NetworkDepth::Two),
+            "three" => Ok(NetworkDepth::Three),
+            _ => Err(serde::de::Error::custom("Invalid NetworkDepth")),
+        }
+    }
+}
+
 impl Display for GeoUrnMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -128,7 +143,7 @@ pub struct Education {
     pub school_name: String,
     pub field_of_study: Option<String>,
     pub school_urn: Option<String>,
-    pub time_period: TimePeriod,
+    pub time_period: Option<TimePeriod>,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
@@ -172,16 +187,16 @@ pub struct ProfileView {
     pub headline: String,
     #[serde(deserialize_with = "deserialize_profile_url")]
     #[serde(rename(deserialize = "miniProfile"))]
-    pub picture_url: String,
+    pub picture_url: Option<String>,
 }
 
-fn deserialize_profile_url<'a, D>(deserializer: D) -> Result<String, D::Error>
+fn deserialize_profile_url<'a, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
-    D: serde::Deserializer<'a>,
+    D: Deserializer<'a>,
 {
     #[derive(serde::Deserialize)]
     struct Helper {
-        picture: Picture,
+        picture: Option<Picture>,
     }
 
     #[derive(serde::Deserialize)]
@@ -203,10 +218,13 @@ where
     }
 
     let helper = Helper::deserialize(deserializer)?;
-    Ok(format!(
-        "{}{}",
-        helper.picture.vector_image.root_url, helper.picture.vector_image.artifacts[0].file_identifying_url_path_segment
-    ))
+    if let Some(picture) = helper.picture {
+        return Ok(Some(format!(
+            "{}{}",
+            picture.vector_image.root_url, picture.vector_image.artifacts[0].file_identifying_url_path_segment
+        )));
+    }
+    Ok(None)
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct LanguageView {
