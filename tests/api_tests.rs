@@ -267,7 +267,18 @@ async fn api_profile_test_7() {
 
 #[tokio::test]
 async fn test_search_people() {
-    let session = LinkedinSession::new();
+    let mut session = LinkedinSession::new();
+    if !session.is_auth() {
+        info!("Not authenticated, trying to authenticate");
+        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
+            Ok(_) => {
+                info!("Authenticated successfully");
+            }
+            Err(e) => {
+                fatal_assert!("Failed to authenticate {}", e);
+            }
+        }
+    }
     let mut params = SearchParams {
         page: 0,
         keywords: Some("Java".to_string()),

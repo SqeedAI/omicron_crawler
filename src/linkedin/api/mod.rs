@@ -250,6 +250,7 @@ impl LinkedinSession {
         let mut is_auth = false;
         let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
 
+        /// TODO COOKIE UNUSED, SHALL BE USED IN AUTHENTICATE!!!!!!!!!!
         let mut cookie = Cookie::new("lang", "v=2&lang=en-us");
 
         // Set the attributes. These are necessary as linkedin checks for all of them. Otherwise we get 401 Unauthorized
