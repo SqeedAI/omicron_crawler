@@ -50,6 +50,8 @@ pub struct AzureClient {
     search_dequeue_api: &'static str,
     profile_uri: &'static str,
     profile_dequeue_api: &'static str,
+    manager_search_api: &'static str,
+    manager_profile_api: &'static str,
     client: Client,
 }
 
@@ -79,6 +81,8 @@ impl AzureClient {
         let search_dequeue_api = get_env().await.azure_search_dequeue_api.as_str();
         let profile_uri = get_env().await.azure_profile_uri.as_str();
         let profile_dequeue_api = get_env().await.azure_profile_dequeue_api.as_str();
+        let manager_profile_api = get_env().await.manager_profile_api.as_str();
+        let manager_search_api = get_env().await.manager_search_api.as_str();
         Self {
             manager_bus_uri,
             manager_bus_api,
@@ -90,6 +94,8 @@ impl AzureClient {
             search_dequeue_api,
             profile_uri,
             profile_dequeue_api,
+            manager_search_api,
+            manager_profile_api,
             client: Client::new(),
         }
     }
@@ -111,7 +117,7 @@ impl AzureClient {
                 }
                 match response.json::<ProfileIds>().await {
                     Ok(profile) => Ok(Some(profile)),
-                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
+                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {:?}", e))),
                 }
             }
             Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
@@ -143,7 +149,7 @@ impl AzureClient {
         }
     }
 
-    pub async fn push_to_bus<T>(&self, search_result: &T, label: Label) -> CrawlerResult<()>
+    pub async fn push_to_bus<T>(&self, data: &T, label: Label) -> CrawlerResult<()>
     where
         T: Serialize + Sized,
     {
@@ -151,7 +157,7 @@ impl AzureClient {
             Ok(sas) => sas,
             Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
         };
-        let json_body = match serde_json::to_string(search_result) {
+        let json_body = match serde_json::to_string(data) {
             Ok(json_body) => json_body,
             Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
         };
@@ -173,5 +179,26 @@ impl AzureClient {
             return Err(BusError(format!("Failed to push search result {}", request.text().await.unwrap())));
         }
         Ok(())
+    }
+
+    pub async fn push_to_manager<T>(&self, data: T, label: Label)
+    where
+        T: Serialize + Sized + Send + Sync,
+    {
+        let api = match label {
+            Label::SearchComplete => self.manager_search_api,
+            Label::ProfilesComplete => self.manager_profile_api,
+        };
+        let json_body = match serde_json::to_string(&data) {
+            Ok(json_body) => json_body,
+            Err(e) => {
+                error!("Failed to serialize data: {}", e);
+                return;
+            }
+        };
+
+        if let Err(e) = self.client.post(api).body(json_body).send().await {
+            error!("Failed to push to manager {:?}", e);
+        }
     }
 }

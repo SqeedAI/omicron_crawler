@@ -19,17 +19,25 @@ async fn obtain_profiles(mut params: SearchParams, linkedin_session: Arc<Linkedi
             return;
         }
     };
-    match azure_client.push_to_bus(&result, Label::SearchComplete).await {
-        Ok(_) => {
-            info!("Pushed search result to bus!");
-        }
-        Err(e) => error!("Failed pushing searches to the bus{}", e),
-    }
+    // match azure_client.push_to_bus(&result, Label::SearchComplete).await {
+    //     Ok(_) => {
+    //         info!("Pushed search result to bus!");
+    //     }
+    //     Err(e) => error!("Failed pushing searches to the bus{}", e),
+    // }
+    tokio::spawn(async move {
+        info!("Pushing search result to manager");
+        azure_client.push_to_manager(&result, Label::SearchComplete).await;
+    });
 }
 
+// TODO profile rate limits
+// Goal is 500 profiles per hour
+// That means 5 cooldown periods, each one is 12 minutes
+// Every 10th profile shall have a micro cooldown of 5 seconds (So 50 seconds - 12 minutes)
 async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<LinkedinSession>, azure_client: Arc<AzureClient>) {
-    let mut crawled_profiles = Vec::with_capacity(profiles.ids.len());
-    for profile in profiles.ids.iter() {
+    let mut crawled_profiles = Vec::with_capacity(profiles.profile_ids.len());
+    for profile in profiles.profile_ids.iter() {
         let mut crawled_profile = match linkedin_session.profile(profile.as_str()).await {
             Ok(profile) => profile,
             Err(e) => {
@@ -54,12 +62,16 @@ async fn crawl_profile(profiles: &mut ProfileIds, linkedin_session: Arc<Linkedin
         profiles: crawled_profiles,
         request_metadata: profiles.request_metadata.take(),
     };
-    match azure_client.push_to_bus(&crawled_profiles, Label::ProfilesComplete).await {
-        Ok(_) => {
-            info!("Pushed profiles to bus!");
-        }
-        Err(e) => error!("Failed pushing profiles to bus {}", e),
-    }
+    // match azure_client.push_to_bus(&crawled_profiles, Label::ProfilesComplete).await {
+    //     Ok(_) => {
+    //         info!("Pushed profiles to bus!");
+    //     }
+    //     Err(e) => error!("Failed pushing profiles to bus {}", e),
+    // }
+    tokio::task::spawn(async move {
+        info!("Pushing profiles to manager");
+        azure_client.push_to_manager(crawled_profiles, Label::ProfilesComplete).await
+    });
 }
 
 static MAXIMUM_SEARCHES: AtomicU8 = AtomicU8::new(2);

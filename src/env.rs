@@ -41,6 +41,8 @@ pub struct Env {
     pub azure_manager_bus_key: String,
     pub azure_sas_profile_key: String,
     pub azure_sas_search_key: String,
+    pub manager_search_api: String,
+    pub manager_profile_api: String,
 }
 
 static ENV: OnceCell<Env> = OnceCell::const_new();
@@ -100,6 +102,14 @@ pub fn env_azure_sas_search_key() -> String {
 
 pub fn env_host() -> String {
     std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
+}
+
+pub fn env_manager_search_api() -> String {
+    std::env::var("MANAGER_SEARCH_API").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_manager_profile_api() -> String {
+    std::env::var("MANAGER_PROFILE_API").unwrap_or_else(|_| "".to_string())
 }
 
 pub fn env_port() -> u16 {
@@ -187,7 +197,6 @@ pub async fn get_env() -> &'static Env {
     let driver_path = driver_path(browser);
     let browser_binary_path = env_browser_binary_path(browser);
     let profile_path = profile_path(browser);
-    let azure_search_uri = env_azure_search_uri();
     ENV.get_or_init(|| async {
         Env {
             log_level: env_log_level(),
@@ -210,6 +219,8 @@ pub async fn get_env() -> &'static Env {
             azure_manager_bus_key: env_azure_manager_bus_key(),
             azure_sas_profile_key: env_azure_sas_profile_key(),
             azure_sas_search_key: env_azure_sas_search_key(),
+            manager_search_api: env_manager_search_api(),
+            manager_profile_api: env_manager_profile_api(),
         }
     })
     .await

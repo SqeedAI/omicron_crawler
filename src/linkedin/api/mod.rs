@@ -48,7 +48,7 @@ impl LinkedinSession {
         headers.insert("X-User-Locale", HeaderValue::from_static("en_US"));
         headers.insert("Accept-Language", HeaderValue::from_static("en-us"));
         if let Some(token) = csrf_token {
-            info!("Using csrf token {}", token);
+            debug!("Using csrf token {}", token);
             headers.insert("csrf-token", HeaderValue::from_str(token).unwrap());
         }
         headers
@@ -138,6 +138,7 @@ impl LinkedinSession {
     }
 
     pub async fn profile(&self, profile_id: &str) -> CrawlerResult<Profile> {
+        info!("Getting profile {}", profile_id);
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
         let headers = Self::create_default_headers(Some(&self.session_id));
         let profile = match self.client.get(endpoint).headers(headers).send().await {
