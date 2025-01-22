@@ -178,6 +178,12 @@ impl LinkedinSession {
                 countries.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" | ")
             ))
         }
+        if let Some(network_depth) = params.network_depth.as_ref() {
+            filters.push(format!(
+                "(key:network,value:List({}))",
+                network_depth.iter().map(|d| d.to_string()).collect::<Vec<String>>().join(" | ")
+            ))
+        }
         if let Some(profile_language) = params.profile_language.as_ref() {
             filters.push(format!("(key:profileLanguage,value:List({}))", profile_language.join(" | ")))
         }

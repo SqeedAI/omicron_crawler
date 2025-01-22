@@ -8,6 +8,22 @@ pub enum GeoUrnMap {
     Slovakia = 103119917,
 }
 
+pub enum NetworkDepth {
+    One,
+    Two,
+    Three,
+}
+
+impl Display for NetworkDepth {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NetworkDepth::One => write!(f, "F"),
+            NetworkDepth::Two => write!(f, "S"),
+            NetworkDepth::Three => write!(f, "O"),
+        }
+    }
+}
+
 impl Display for GeoUrnMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -40,6 +56,7 @@ pub struct SearchParams {
     pub keyword_school: Option<String>,
     pub profile_language: Option<Vec<String>>,
     pub request_metadata: Option<String>,
+    pub network_depth: Option<Vec<NetworkDepth>>,
     pub page: u32,
     pub end: u32,
 }

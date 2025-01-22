@@ -224,6 +224,7 @@ async fn test_search_people() {
         keyword_school: None,
         countries: Some(vec![GeoUrnMap::Slovakia]),
         profile_language: None,
+        network_depth: None,
         end: 2,
         request_metadata: None,
     };
