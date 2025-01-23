@@ -1,5 +1,5 @@
 use crate::env::Browser::{Chrome, Firefox};
-use crate::linkedin::profiles::Profile;
+use crate::linkedin::web_driver::profiles::Profile;
 use log::Level;
 use serde::de::Unexpected::Str;
 use std::fmt::{Display, Formatter};

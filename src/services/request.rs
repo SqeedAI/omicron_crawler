@@ -6,7 +6,7 @@ use omicron_crawler::azure::json::{CrawledProfiles, ProfileIds};
 use omicron_crawler::driver::session_manager::{SessionManager, SessionPool};
 use omicron_crawler::errors::CrawlerError;
 use omicron_crawler::linkedin::api::json::SearchParams;
-use omicron_crawler::linkedin::sales_crawler::SalesCrawler;
+use omicron_crawler::linkedin::web_driver::sales_crawler::SalesCrawler;
 use std::cmp::min;
 use std::thread;
 

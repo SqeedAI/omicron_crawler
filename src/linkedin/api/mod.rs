@@ -1,7 +1,8 @@
+mod crawler;
 pub mod json;
 mod utils;
 
-use crate::errors::CrawlerError::SessionError;
+use crate::errors::CrawlerError::{LinkedinError, SessionError};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
@@ -142,10 +143,15 @@ impl LinkedinSession {
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
         let headers = Self::create_default_headers(Some(&self.session_id));
         let profile = match self.client.get(endpoint).headers(headers).send().await {
-            Ok(response) => match response.json::<Profile>().await {
-                Ok(profile) => profile,
-                Err(e) => return Err(SessionError(format!("Failed to parse profile {:?}", e))),
-            },
+            Ok(response) => {
+                if !response.status().is_success() {
+                    return Err(LinkedinError(format!("Failed to get profile {}", response.text().await.unwrap())));
+                }
+                match response.json::<Profile>().await {
+                    Ok(profile) => profile,
+                    Err(e) => return Err(SessionError(format!("Failed to parse profile {:?}", e))),
+                }
+            }
             Err(e) => return Err(SessionError(format!("Failed to get profile {}", e))),
         };
 

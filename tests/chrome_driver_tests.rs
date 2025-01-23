@@ -1,7 +1,7 @@
 use omicron_crawler::driver::service::ChromeDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
-use omicron_crawler::linkedin::sales_crawler::SalesCrawler;
+use omicron_crawler::linkedin::web_driver::sales_crawler::SalesCrawler;
 use omicron_crawler::logger::Logger;
 
 #[tokio::test(flavor = "multi_thread")]

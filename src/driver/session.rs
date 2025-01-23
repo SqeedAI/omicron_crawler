@@ -1,5 +1,5 @@
 use crate::driver::traits::BrowserConfig;
-use crate::linkedin::sales_crawler::SalesCrawler;
+use crate::linkedin::web_driver::sales_crawler::SalesCrawler;
 use crate::utils::generate_random_string;
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;

@@ -1,8 +1,8 @@
 use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::{DriverError, InteractionError, ParseError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::parse_sales::parse_experience_entry;
-use crate::linkedin::profiles::{Experience, Profile, SearchResult};
+use crate::linkedin::web_driver::profiles::{Experience, Profile, SearchResult};
+use crate::linkedin::web_driver::sales::parse_experience_entry;
 use std::time::Duration;
 use thirtyfour::{By, Key, WebElement};
 

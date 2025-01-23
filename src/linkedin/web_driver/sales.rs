@@ -1,8 +1,8 @@
 use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::{DriverError, InteractionError, ParseError};
 use crate::errors::{CrawlerError, CrawlerResult};
-use crate::linkedin::profiles;
-use crate::linkedin::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
+use crate::linkedin::web_driver::profiles;
+use crate::linkedin::web_driver::profiles::{Education, Experience, Interval, Language, Profile, SearchResult, Skill};
 use crate::utils::get_domain_url;
 use regex::Regex;
 use std::fmt::format;

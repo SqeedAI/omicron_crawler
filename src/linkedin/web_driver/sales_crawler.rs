@@ -1,10 +1,10 @@
 use crate::driver::session_manager::SessionProxy;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
-use crate::linkedin::parse_sales::{
+use crate::linkedin::web_driver::profiles::{Profile, SearchResult};
+use crate::linkedin::web_driver::sales::{
     parse_sales_profile, parse_search, send_message, set_function_search, set_geography_search, set_job_title_search, set_keyword_search,
 };
-use crate::linkedin::profiles::{Profile, SearchResult};
 use std::time::Duration;
 
 pub struct SalesCrawler<'a> {

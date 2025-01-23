@@ -1,12 +1,15 @@
 use omicron_crawler::azure::{AzureClient, Label};
-use omicron_crawler::env::load_env;
+use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::LinkedinSession;
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_auth_test() {
     let mut linkedin_session = LinkedinSession::new();
-    if let Err(e) = linkedin_session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
+    load_env();
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+    if let Err(e) = linkedin_session.authenticate(username, password).await {
         assert!(false, "Failed to authenticate {}", e);
     }
 }
