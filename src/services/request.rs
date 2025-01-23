@@ -13,8 +13,8 @@ use std::thread;
 #[post("/search")]
 pub async fn search(search_params: Json<SearchParams>) -> HttpResponse {
     let linkedin_session = get_linkedin_session().await;
-    let mut search_params = search_params.into_inner();
-    let results = match linkedin_session.search_people(&mut search_params).await {
+    let search_params = search_params.into_inner();
+    let results = match linkedin_session.search_people(search_params).await {
         Ok(result) => result,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to perform search {}", e)),
     };

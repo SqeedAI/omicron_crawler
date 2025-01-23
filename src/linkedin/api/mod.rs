@@ -1,5 +1,6 @@
-mod crawler;
+pub mod crawler;
 pub mod json;
+pub mod rate_limits;
 mod utils;
 
 use crate::errors::CrawlerError::{LinkedinError, SessionError};
@@ -158,7 +159,7 @@ impl LinkedinSession {
         Ok(profile)
     }
 
-    pub async fn search_people(&self, params: &mut SearchParams) -> CrawlerResult<SearchResult> {
+    pub async fn search_people(&self, mut params: SearchParams) -> CrawlerResult<SearchResult> {
         let mut filters = Vec::<String>::new();
         info!("Performing search!");
         const ITEM_PER_PAGE: u32 = 10;

@@ -3,6 +3,7 @@ use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::LinkedinSession;
 
+//TODO [ERROR] Failed to crawl profile ACoAAEJ2X3QB2V1z5kXcnf2j36eoSXDcz8bRVJw reason: SessionError: Failed to parse profile reqwest::Error { kind: Decode, source: Error("missing field `timePeriod`", line: 1, column: 12934) }
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_auth_test() {
     let mut linkedin_session = LinkedinSession::new();
@@ -296,7 +297,7 @@ async fn test_search_people() {
         end: 2,
         request_metadata: None,
     };
-    let search_result = match session.search_people(&mut params).await {
+    let search_result = match session.search_people(params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };
