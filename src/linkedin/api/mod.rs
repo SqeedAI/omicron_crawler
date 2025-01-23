@@ -88,15 +88,15 @@ impl LinkedinSession {
         self.session_id = cookie_raw.replace("\"", "").to_string();
         Ok(())
     }
-
     pub async fn authenticate(&mut self, username: &str, password: &str) -> CrawlerResult<()> {
         self.obtain_session_id().await?;
         info!("Obtained session id");
         let headers = Self::create_default_headers(Some(&self.session_id));
+        let formatted_session_id = format!("\"{}\"", self.session_id);
         let form = vec![
             ("session_key", username),
             ("session_password", password),
-            ("JSESSIONID", &self.session_id),
+            ("JSESSIONID", formatted_session_id.as_ref()),
         ];
         let response = match self
             .client
@@ -250,14 +250,6 @@ impl LinkedinSession {
         let mut is_auth = false;
         let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
 
-        /// TODO COOKIE UNUSED, SHALL BE USED IN AUTHENTICATE!!!!!!!!!!
-        let mut cookie = Cookie::new("lang", "v=2&lang=en-us");
-
-        // Set the attributes. These are necessary as linkedin checks for all of them. Otherwise we get 401 Unauthorized
-        cookie.set_domain(Self::COOKIE_DOMAIN); // Domain=linkedin.com
-        cookie.set_path("/"); // Path=/
-        cookie.set_secure(true); // Secure
-        cookie.set_same_site(cookie::SameSite::None); // SameSite=None
         if let Some(cookies) = load_cookies() {
             let cookie_list = cookies.split(";").collect::<Vec<&str>>();
             for cookie in cookie_list {
