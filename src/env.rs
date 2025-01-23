@@ -43,6 +43,8 @@ pub struct Env {
     pub azure_sas_search_key: String,
     pub manager_search_api: String,
     pub manager_profile_api: String,
+    pub linkedin_username: String,
+    pub linkedin_password: String,
 }
 
 static ENV: OnceCell<Env> = OnceCell::const_new();
@@ -98,6 +100,13 @@ pub fn env_azure_sas_profile_key() -> String {
 
 pub fn env_azure_sas_search_key() -> String {
     std::env::var("AZURE_SAS_SEARCH_KEY").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_linkedin_username() -> String {
+    std::env::var("LINKEDIN_USERNAME").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_linkedin_password() -> String {
+    std::env::var("LINKEDIN_PASSWORD").unwrap_or_else(|_| "".to_string())
 }
 
 pub fn env_host() -> String {
@@ -221,6 +230,8 @@ pub async fn get_env() -> &'static Env {
             azure_sas_search_key: env_azure_sas_search_key(),
             manager_search_api: env_manager_search_api(),
             manager_profile_api: env_manager_profile_api(),
+            linkedin_username: env_linkedin_username(),
+            linkedin_password: env_linkedin_password(),
         }
     })
     .await
