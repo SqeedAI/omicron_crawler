@@ -160,9 +160,13 @@ impl LinkedinSession {
     }
 
     pub async fn search_people(&self, mut params: SearchParams) -> CrawlerResult<SearchResult> {
+        if params.page > params.end {
+            return Err(SessionError("Start page cannot be greater than end page".to_string()));
+        }
+
         let mut filters = Vec::<String>::new();
         info!("Performing search!");
-        const ITEM_PER_PAGE: u32 = 10;
+        const ITEM_PER_PAGE: u16 = 10;
         filters.push(String::from("(key:resultType,value:List(PEOPLE))".to_string()));
         if let Some(keyword_first_name) = params.keyword_first_name.as_ref() {
             filters.push(format!("(key:firstName,value:List({}))", keyword_first_name))
@@ -200,11 +204,12 @@ impl LinkedinSession {
             None => "",
         };
         let mut current_offset = if params.page == 0 { 1 } else { params.page * ITEM_PER_PAGE };
-        let total_offset = params.end * ITEM_PER_PAGE;
+        let mut total_offset = params.end * ITEM_PER_PAGE;
         let mut search_response = SearchResult {
             elements: Vec::with_capacity((total_offset - current_offset) as usize),
             request_metadata: params.request_metadata.take(),
             total: 0,
+            total_lookup: 0,
         };
         info!("searching {} from total {}", current_offset, total_offset);
         while current_offset < total_offset {
@@ -227,12 +232,14 @@ impl LinkedinSession {
             for item in response.elements.iter() {
                 search_response.elements.push(item.clone());
             }
-            search_response.total = response.total;
-            current_offset += ITEM_PER_PAGE;
-            if current_offset > total_offset {
-                current_offset = total_offset;
+            if total_offset > response.total_lookup {
+                total_offset = response.total_lookup;
             }
+
+            search_response.total = response.total;
+            search_response.total_lookup = total_offset;
             debug!("offset: {}, total: {}", current_offset, total_offset);
+            current_offset += ITEM_PER_PAGE;
         }
         Ok(search_response)
     }

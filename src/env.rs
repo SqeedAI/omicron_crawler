@@ -35,6 +35,7 @@ pub struct Env {
     pub azure_search_dequeue_api: String,
     pub azure_profile_uri: String,
     pub azure_profile_dequeue_api: String,
+    pub azure_profile_queue_api: String,
     pub azure_manager_bus_uri: String,
     pub azure_manager_bus_api: String,
     pub azure_sas_key_name: String,
@@ -76,6 +77,9 @@ pub fn env_azure_profile_uri() -> String {
 }
 pub fn env_azure_profile_dequeue_api() -> String {
     std::env::var("AZURE_PROFILE_DEQUEUE_API").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_azure_profile_queue_api() -> String {
+    std::env::var("AZURE_PROFILE_QUEUE_API").unwrap_or_else(|_| "".to_string())
 }
 
 pub fn env_azure_manager_bus_uri() -> String {
@@ -222,6 +226,7 @@ pub async fn get_env() -> &'static Env {
             azure_search_dequeue_api: env_azure_search_dequeue_api(),
             azure_profile_uri: env_azure_profile_uri(),
             azure_profile_dequeue_api: env_azure_profile_dequeue_api(),
+            azure_profile_queue_api: env_azure_profile_queue_api(),
             azure_manager_bus_uri: env_azure_manager_bus_uri(),
             azure_manager_bus_api: env_azure_manager_bus_api(),
             azure_sas_key_name: env_azure_sas_key_name(),

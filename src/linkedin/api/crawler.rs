@@ -1,8 +1,10 @@
 use crate::azure::json::{CrawledProfiles, ProfileIds};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{SearchParams, SearchResult};
+use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
 use crate::linkedin::api::rate_limits::RateLimits;
 use crate::linkedin::api::LinkedinSession;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 
 pub struct Crawler {
@@ -28,11 +30,14 @@ impl Crawler {
     pub async fn search_people(&self, params: SearchParams) -> CrawlerResult<SearchResult> {
         self.linked_in_session.search_people(params).await
     }
-
-    /// TODO Add splitting
-    pub async fn profiles(&mut self, mut ids: ProfileIds) -> CrawlerResult<CrawledProfiles> {
-        let mut crawled_profiles = Vec::with_capacity(ids.ids.len());
-        for profile in ids.ids.iter() {
+    pub async fn profiles(&mut self, ids: &[String], interrupt_signal: Option<&AtomicBool>) -> CrawlerResult<Vec<Profile>> {
+        let mut crawled_profiles = Vec::with_capacity(ids.len());
+        for profile in ids.iter() {
+            if let Some(signal) = interrupt_signal {
+                if signal.load(Relaxed) == true {
+                    break;
+                }
+            }
             let mut parsed_profile = match self.linked_in_session.profile(profile.as_str()).await {
                 Ok(profile) => profile,
                 Err(e) => {
@@ -53,9 +58,6 @@ impl Crawler {
             info!("Sleeping. Rate limit: {}", wait_time.as_secs());
             tokio::time::sleep(wait_time).await;
         }
-        Ok(CrawledProfiles {
-            profiles: crawled_profiles,
-            request_metadata: ids.request_metadata.take(),
-        })
+        Ok(crawled_profiles)
     }
 }

@@ -1,7 +1,10 @@
+use log::LevelFilter;
 use omicron_crawler::azure::{AzureClient, Label};
 use omicron_crawler::env::{get_env, load_env};
-use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
+use omicron_crawler::linkedin::api::json::{GeoUrnMap, Profile, ProfileView, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::LinkedinSession;
+use omicron_crawler::logger::Logger;
+use serde::de::Unexpected::Str;
 
 //TODO [ERROR] Failed to crawl profile ACoAAEJ2X3QB2V1z5kXcnf2j36eoSXDcz8bRVJw reason: SessionError: Failed to parse profile reqwest::Error { kind: Decode, source: Error("missing field `timePeriod`", line: 1, column: 12934) }
 #[tokio::test(flavor = "multi_thread")]
@@ -280,6 +283,8 @@ async fn api_profile_test_7() {
 
 #[tokio::test]
 async fn test_search_people() {
+    Logger::init(LevelFilter::Trace);
+
     let mut session = LinkedinSession::new();
     if !session.is_auth() {
         info!("Not authenticated, trying to authenticate");
@@ -292,7 +297,7 @@ async fn test_search_people() {
             }
         }
     }
-    let mut params = SearchParams {
+    let params = SearchParams {
         page: 0,
         keywords: Some("Java".to_string()),
         keyword_first_name: Some("Tomas".to_string()),
@@ -313,6 +318,47 @@ async fn test_search_people() {
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
+    assert_eq!(search_result.total_lookup, 20);
+}
+
+#[tokio::test]
+async fn test_search_people_max() {
+    Logger::init(LevelFilter::Trace);
+
+    let mut session = LinkedinSession::new();
+    if !session.is_auth() {
+        info!("Not authenticated, trying to authenticate");
+        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
+            Ok(_) => {
+                info!("Authenticated successfully");
+            }
+            Err(e) => {
+                fatal_assert!("Failed to authenticate {}", e);
+            }
+        }
+    }
+    let params = SearchParams {
+        page: 0,
+        keywords: Some("Java".to_string()),
+        keyword_first_name: Some("Tomas".to_string()),
+        keyword_last_name: None,
+        keyword_title: None,
+        keyword_company: None,
+        keyword_school: None,
+        countries: Some(vec![GeoUrnMap::Slovakia]),
+        profile_language: None,
+        network_depth: None,
+        end: 100,
+        request_metadata: None,
+    };
+    let search_result = match session.search_people(params).await {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to search people {}", e),
+    };
+
+    assert!(search_result.total > 0);
+    assert!(search_result.elements.len() > 0);
+    assert_eq!(search_result.total_lookup, 547);
 }
 
 #[tokio::test]
@@ -323,15 +369,28 @@ async fn push_to_bus_search_complete_test() {
         elements: vec![SearchItem {
             first_name: "Tomas".to_string(),
             last_name: "Stranak".to_string(),
-            subtitle: "Software Engineer".to_string(),
+            subtitle: Some("Software Engineer".to_string()),
             summary: None,
             profile_urn: "urn:li:fsd_profile:B0B1B01A".to_string(),
             url: "https://www.linkedin.com/in/tomas-stranak-b0b1b01a".to_string(),
         }],
         request_metadata: None,
+        total_lookup: 0,
         total: 1,
     };
     match azure_client.push_to_bus(&search_result, Label::SearchComplete).await {
+        Ok(_) => {}
+        Err(e) => assert!(false, "Failed to push to bus {}", e),
+    }
+}
+
+#[tokio::test]
+async fn test_push_profile_to_queue() {
+    load_env();
+    let azure_client = AzureClient::new().await;
+    let test_data = String::from("test_data");
+
+    match azure_client.push_to_queue(&test_data).await {
         Ok(_) => {}
         Err(e) => assert!(false, "Failed to push to bus {}", e),
     }

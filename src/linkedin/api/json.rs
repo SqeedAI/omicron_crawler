@@ -72,8 +72,8 @@ pub struct SearchParams {
     pub profile_language: Option<Vec<String>>,
     pub request_metadata: Option<String>,
     pub network_depth: Option<Vec<NetworkDepth>>,
-    pub page: u32,
-    pub end: u32,
+    pub page: u16,
+    pub end: u16,
 }
 #[derive(serde::Deserialize)]
 pub struct FetchCookiesResponse {
@@ -324,7 +324,10 @@ pub struct Publication {
 #[derive(serde::Serialize)]
 pub struct SearchResult {
     pub elements: Vec<SearchItem>,
+    /// TODO should be cleaned as request meta data doesn't belong here
     pub request_metadata: Option<String>,
+    #[serde(skip_serializing)]
+    pub total_lookup: u16,
     pub total: u64,
 }
 impl<'de> Deserialize<'de> for SearchResult {
@@ -347,7 +350,15 @@ impl<'de> Deserialize<'de> for SearchResult {
         struct SearchDashClusters {
             elements: Vec<SearchMetaItem>,
             metadata: Metadata,
+            paging: Paging,
         }
+        #[derive(serde::Deserialize)]
+        struct Paging {
+            count: u16,
+            start: u16,
+            total: u16,
+        }
+
         #[derive(serde::Deserialize)]
         #[serde(rename_all(deserialize = "camelCase"))]
         struct Metadata {
@@ -368,10 +379,12 @@ impl<'de> Deserialize<'de> for SearchResult {
                 request_metadata: None,
                 elements: Vec::new(),
                 total: 0,
+                total_lookup: 0,
             });
         }
         let mut items = Vec::with_capacity(root.data.search_dash_clusters_by_all.elements[0].items.len());
         let total = root.data.search_dash_clusters_by_all.metadata.total_result_count;
+        let total_lookup = root.data.search_dash_clusters_by_all.paging.total;
         for item in root.data.search_dash_clusters_by_all.elements[0].items.iter() {
             items.push(item.clone());
         }
@@ -379,6 +392,7 @@ impl<'de> Deserialize<'de> for SearchResult {
         Ok(SearchResult {
             elements: items,
             total,
+            total_lookup,
             request_metadata: None,
         })
     }
@@ -402,7 +416,7 @@ where
     #[serde(rename_all(deserialize = "camelCase"))]
     struct Item {
         pub title: Title,
-        pub primary_subtitle: PrimarySubtitle,
+        pub primary_subtitle: Option<PrimarySubtitle>,
         pub summary: Option<Summary>,
         pub navigation_url: String,
         pub entity_urn: String,
@@ -449,10 +463,15 @@ where
             }
         };
 
+        let subtitle = match item_inner.item.entity_result.primary_subtitle {
+            Some(subtitle) => Some(subtitle.text),
+            None => None,
+        };
+
         out.push(SearchItem {
             first_name,
             last_name,
-            subtitle: item_inner.item.entity_result.primary_subtitle.text,
+            subtitle,
             summary,
             url: item_inner.item.entity_result.navigation_url,
             profile_urn: urn.to_string(),
@@ -465,7 +484,7 @@ where
 pub struct SearchItem {
     pub first_name: String,
     pub last_name: String,
-    pub subtitle: String,
+    pub subtitle: Option<String>,
     pub summary: Option<String>,
     pub url: String,
     pub profile_urn: String,

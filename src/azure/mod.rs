@@ -48,6 +48,7 @@ pub struct AzureClient {
     sas_search_key: &'static str,
     search_uri: &'static str,
     search_dequeue_api: &'static str,
+    search_queue_api: &'static str,
     profile_uri: &'static str,
     profile_dequeue_api: &'static str,
     manager_search_api: &'static str,
@@ -79,10 +80,12 @@ impl AzureClient {
         let sas_search_key = get_env().await.azure_sas_search_key.as_str();
         let search_uri = get_env().await.azure_search_uri.as_str();
         let search_dequeue_api = get_env().await.azure_search_dequeue_api.as_str();
+        let search_queue_api = get_env().await.azure_profile_queue_api.as_str();
         let profile_uri = get_env().await.azure_profile_uri.as_str();
         let profile_dequeue_api = get_env().await.azure_profile_dequeue_api.as_str();
         let manager_profile_api = get_env().await.manager_profile_api.as_str();
         let manager_search_api = get_env().await.manager_search_api.as_str();
+
         Self {
             manager_bus_uri,
             manager_bus_api,
@@ -92,6 +95,7 @@ impl AzureClient {
             sas_search_key,
             search_uri,
             search_dequeue_api,
+            search_queue_api,
             profile_uri,
             profile_dequeue_api,
             manager_search_api,
@@ -149,9 +153,46 @@ impl AzureClient {
         }
     }
 
+    pub async fn push_to_queue<T>(&self, data: &T) -> CrawlerResult<()>
+    where
+        T: Serialize,
+    {
+        let sas_token = match create_sas_token(self.profile_uri, self.sas_key_name, self.sas_profile_key) {
+            Ok(sas) => sas,
+            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+        };
+        let json_body = match serde_json::to_string(data) {
+            Ok(json_body) => json_body,
+            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+        };
+        match self
+            .client
+            .post(self.search_queue_api)
+            .header("Authorization", sas_token)
+            .header("Content-Type", "application/json")
+            .body(json_body)
+            .send()
+            .await
+        {
+            Ok(request) => {
+                if !request.status().is_success() {
+                    return Err(QueueError(format!(
+                        "Failed to push to queue with status {} body {}",
+                        request.status().as_u16(),
+                        request.text().await.unwrap()
+                    )));
+                }
+            }
+            Err(e) => {
+                return Err(QueueError(format!("Failed to push to bus {:?}", e)));
+            }
+        }
+        Ok(())
+    }
+
     pub async fn push_to_bus<T>(&self, data: &T, label: Label) -> CrawlerResult<()>
     where
-        T: Serialize + Sized,
+        T: Serialize,
     {
         let sas = match create_sas_token(self.manager_bus_uri, self.sas_key_name, self.manager_bus_key) {
             Ok(sas) => sas,

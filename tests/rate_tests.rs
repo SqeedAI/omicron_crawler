@@ -33,7 +33,7 @@ fn test_rate_limits2() {
 #[test]
 fn test_rate_limits3() {
     let profiles_per_hour = 100;
-    let rate_limits = RateLimits::new(profiles_per_hour);
+    let rate_limits = RateLimits::new(profiles_per_hour, 800);
     let mut count = 100;
     for i in rate_limits {
         if count == 0 {
@@ -47,7 +47,7 @@ fn test_rate_limits3() {
 #[test]
 fn test_rate_limits4() {
     let profiles_per_hour = 0;
-    let rate_limits = RateLimits::new(profiles_per_hour);
+    let rate_limits = RateLimits::new(profiles_per_hour, 800);
     let mut count = 100;
     for i in rate_limits {
         if count == 0 {
