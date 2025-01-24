@@ -113,12 +113,21 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.position_view.elements[0].company_name.as_ref().unwrap(), "Asseco CEIT");
     assert_eq!(profile.position_view.elements[0].title, "Team Lead / SW engineer / Architect");
     assert_eq!(
-        profile.position_view.elements[0].time_period.start_date.as_ref().unwrap().year,
+        profile.position_view.elements[0]
+            .time_period
+            .as_ref()
+            .unwrap()
+            .start_date
+            .as_ref()
+            .unwrap()
+            .year,
         2023
     );
     assert_eq!(
         profile.position_view.elements[0]
             .time_period
+            .as_ref()
+            .unwrap()
             .start_date
             .as_ref()
             .unwrap()

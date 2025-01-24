@@ -171,7 +171,7 @@ pub struct Position {
     pub title: String,
     pub location_name: Option<String>,
     pub description: Option<String>,
-    pub time_period: TimePeriod,
+    pub time_period: Option<TimePeriod>,
     pub company_name: Option<String>,
 }
 

@@ -245,7 +245,7 @@ impl LinkedinSession {
                 Ok(skills) => skills,
                 Err(e) => return Err(SessionError(format!("Failed to parse skills {:?}", e))),
             },
-            Err(e) => return Err(SessionError(format!("Failed to get skills {}", e))),
+            Err(e) => return Err(SessionError(format!("Failed to get skills {:?}", e))),
         };
         Ok(skills)
     }
