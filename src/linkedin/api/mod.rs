@@ -91,6 +91,7 @@ impl LinkedinSession {
         Ok(())
     }
     pub async fn authenticate(&mut self, username: &str, password: &str) -> CrawlerResult<()> {
+        info!("Authenticating and generating cookies...");
         self.obtain_session_id().await?;
         info!("Obtained session id");
         let headers = Self::create_default_headers(Some(&self.session_id));
@@ -131,11 +132,12 @@ impl LinkedinSession {
                 response_data.login_result, response_data.challenge_url
             )));
         }
+        info!("Authenticated successfully");
         let url = Url::parse(Self::LINKEDIN_URL).unwrap();
         let cookies = self.cookie_store.cookies(&url).unwrap();
         let bytes = cookies.as_bytes();
         save_cookies(bytes);
-        info!("Authenticated successfully");
+        info!("Wrote cookies");
         Ok(())
     }
 

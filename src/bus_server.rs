@@ -1,3 +1,4 @@
+use actix_web::web::get;
 use log::{debug, error, info};
 use omicron_crawler::azure::json::{CrawledProfiles, ProfileIds};
 use omicron_crawler::azure::{AzureClient, Label};
@@ -80,7 +81,8 @@ static SHUTDOWN_SIGNAL: AtomicBool = AtomicBool::new(false);
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> std::io::Result<()> {
     load_env();
-    Logger::init(log::LevelFilter::Trace);
+    let env = get_env().await;
+    Logger::init(env.log_level);
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     let mut crawler = Crawler::new(RateLimits::new(100, 800), username, password).await;
