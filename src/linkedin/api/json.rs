@@ -294,7 +294,7 @@ pub struct CertificateView {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Certificate {
-    pub authority: String,
+    pub authority: Option<String>,
     pub name: String,
     pub time_period: Option<TimePeriod>,
     pub display_source: Option<String>,

@@ -241,9 +241,9 @@ pub async fn api_profile_test_5() {
 
     assert_eq!(profile.certification_view.elements.len(), 4);
 
-    assert_eq!(profile.certification_view.elements[0].authority, "Cisco");
+    assert_eq!(profile.certification_view.elements[0].authority, Some("Cisco".to_string()));
     assert_eq!(profile.certification_view.elements[0].name, "CCNA Routing and Switching");
-    assert_eq!(profile.certification_view.elements[2].authority, "sqeed");
+    assert_eq!(profile.certification_view.elements[2].authority, Some("sqeed".to_string()));
     assert_eq!(profile.certification_view.elements[2].name, "Empty certificate");
 
     assert_eq!(profile.test_score_view.elements.len(), 2);
