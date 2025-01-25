@@ -1,4 +1,5 @@
 use regex::Regex;
+use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -476,7 +477,7 @@ where
     #[derive(serde::Deserialize)]
     #[serde(rename_all(deserialize = "camelCase"))]
     struct ItemEntity {
-        entity_result: Item,
+        entity_result: Option<Item>,
     }
     #[derive(serde::Deserialize)]
     #[serde(rename_all(deserialize = "camelCase"))]
@@ -505,16 +506,21 @@ where
     let items: Vec<ItemInner> = Vec::deserialize(deserializer)?;
     let mut out = Vec::with_capacity(items.len());
     for item_inner in items {
-        let mut name_split = item_inner.item.entity_result.title.text.split(" ");
+        let entity_result = match item_inner.item.entity_result {
+            Some(entity_result) => entity_result,
+            None => return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity")),
+        };
+
+        let mut name_split = entity_result.title.text.split(" ");
         let first_name = name_split.next().unwrap().to_string();
         let last_name = name_split.next().unwrap().to_string();
-        let summary = match item_inner.item.entity_result.summary {
+        let summary = match entity_result.summary {
             Some(summary) => Some(summary.text),
             None => None,
         };
 
         let regex = Regex::new("urn:li:fsd_profile:([^,]+),").unwrap();
-        let urn = match regex.captures(item_inner.item.entity_result.entity_urn.as_str()) {
+        let urn = match regex.captures(entity_result.entity_urn.as_str()) {
             Some(capture) => match capture.get(1) {
                 Some(matched_urn) => matched_urn.as_str(),
                 None => {
@@ -528,7 +534,7 @@ where
             }
         };
 
-        let subtitle = match item_inner.item.entity_result.primary_subtitle {
+        let subtitle = match entity_result.primary_subtitle {
             Some(subtitle) => Some(subtitle.text),
             None => None,
         };
@@ -538,7 +544,7 @@ where
             last_name,
             subtitle,
             summary,
-            url: item_inner.item.entity_result.navigation_url,
+            url: entity_result.navigation_url,
             profile_urn: urn.to_string(),
         });
     }
