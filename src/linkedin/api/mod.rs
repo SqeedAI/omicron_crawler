@@ -69,10 +69,6 @@ impl LinkedinSession {
             let text = response.text().await.unwrap();
             return Err(SessionError(format!("Failed to obtain linkedin set-cookies {} {}", status, text)));
         }
-        println!("{:?}", response.headers());
-
-        let raw_set_cookies = response.headers().get("set-cookie").unwrap();
-        println!("Raw: {:?}", raw_set_cookies);
 
         let auth_response = match response.json::<FetchCookiesResponse>().await {
             Ok(response) => response,
@@ -170,7 +166,7 @@ impl LinkedinSession {
         }
 
         let mut filters = Vec::<String>::new();
-        info!("Performing search!");
+        info!("Performing search with params {}", params);
         const ITEM_PER_PAGE: u16 = 10;
         filters.push(String::from("(key:resultType,value:List(PEOPLE))".to_string()));
         if let Some(keyword_first_name) = params.keyword_first_name.as_ref() {
@@ -208,7 +204,7 @@ impl LinkedinSession {
             Some(keywords) => keywords,
             None => "",
         };
-        let mut current_offset = params.page * ITEM_PER_PAGE;
+        let mut current_offset = if params.page == 0 { 0 } else { params.page * ITEM_PER_PAGE };
         let mut total_offset = params.end * ITEM_PER_PAGE;
         let mut search_response = SearchResult {
             elements: Vec::with_capacity((total_offset - current_offset) as usize),
@@ -226,7 +222,6 @@ impl LinkedinSession {
                 filter_params
             );
             let headers = Self::create_default_headers(Some(&self.session_id));
-            println!("filter: {}", endpoint);
 
             let response = match self.client.get(endpoint).headers(headers).send().await {
                 Ok(response) => match response.json::<SearchResult>().await {

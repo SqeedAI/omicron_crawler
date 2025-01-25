@@ -358,11 +358,7 @@ async fn test_search_people_2() {
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
-    println!("{}", search_result.total);
-    println!("{}", search_result.elements.len());
-    for i in search_result.elements.iter() {
-        println!("{} {}", i.first_name, i.last_name);
-    }
+    assert_eq!(search_result.total_lookup, 38);
 }
 
 #[tokio::test]

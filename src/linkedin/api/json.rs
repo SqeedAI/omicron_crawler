@@ -75,6 +75,58 @@ pub struct SearchParams {
     pub page: u16,
     pub end: u16,
 }
+
+impl Display for SearchParams {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let output = format!(
+            "keywords: {}, page: {}, end: {}",
+            self.keywords.as_ref().unwrap_or(&"".to_string()),
+            self.page,
+            self.end
+        );
+
+        let mut output = String::new();
+
+        if let Some(first_name) = self.keyword_first_name.as_ref() {
+            output.push_str(&format!("keyword_first_name: {}, ", first_name));
+        }
+        if let Some(last_name) = self.keyword_last_name.as_ref() {
+            output.push_str(&format!("keyword_last_name: {}, ", last_name));
+        }
+        if let Some(title) = self.keyword_title.as_ref() {
+            output.push_str(&format!("keyword_title: {}, ", title));
+        }
+        if let Some(company) = self.keyword_company.as_ref() {
+            output.push_str(&format!("keyword_company: {}, ", company));
+        }
+        if let Some(school) = self.keyword_school.as_ref() {
+            output.push_str(&format!("keyword_school: {}, ", school));
+        }
+
+        if let Some(countries) = self.countries.as_ref() {
+            output.push_str("countries: ");
+            for country in countries.iter() {
+                output.push_str(&format!("{}, ", country));
+            }
+        }
+
+        if let Some(profile_language) = self.profile_language.as_ref() {
+            output.push_str("profile_language: ");
+            for profile_language in profile_language.iter() {
+                output.push_str(&format!("{}, ", profile_language));
+            }
+        }
+
+        if let Some(network_depth) = self.network_depth.as_ref() {
+            output.push_str("network_depth: ");
+            for network_depth in network_depth.iter() {
+                output.push_str(&format!("{}, ", network_depth));
+            }
+        }
+        write!(f, "{}", output)
+    }
+}
+
 #[derive(serde::Deserialize)]
 pub struct FetchCookiesResponse {
     pub status: String,
@@ -330,10 +382,11 @@ pub struct SearchResult {
     pub total_lookup: u16,
     pub total: u64,
 }
+
 impl<'de> Deserialize<'de> for SearchResult {
     fn deserialize<D>(deserializer: D) -> Result<SearchResult, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
         #[derive(serde::Deserialize)]
         struct Root {
@@ -347,8 +400,15 @@ impl<'de> Deserialize<'de> for SearchResult {
         }
 
         #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum SearchElement {
+            MetaItem(SearchMetaItem),
+            Other(serde_json::Value), // Catch-all for other types
+        }
+
+        #[derive(serde::Deserialize)]
         struct SearchDashClusters {
-            elements: Vec<SearchMetaItem>,
+            elements: Vec<SearchElement>,
             metadata: Metadata,
             paging: Paging,
         }
@@ -374,7 +434,7 @@ impl<'de> Deserialize<'de> for SearchResult {
         // Deserialize into the intermediate structure
         let root = Root::deserialize(deserializer)?;
 
-        if (root.data.search_dash_clusters_by_all.elements.len() == 0) {
+        if root.data.search_dash_clusters_by_all.elements.len() == 0 {
             return Ok(SearchResult {
                 request_metadata: None,
                 elements: Vec::new(),
@@ -382,15 +442,19 @@ impl<'de> Deserialize<'de> for SearchResult {
                 total_lookup: 0,
             });
         }
-        let mut items = Vec::with_capacity(root.data.search_dash_clusters_by_all.elements[0].items.len());
-        let total = root.data.search_dash_clusters_by_all.metadata.total_result_count;
-        let total_lookup = root.data.search_dash_clusters_by_all.paging.total;
-        for item in root.data.search_dash_clusters_by_all.elements[0].items.iter() {
-            items.push(item.clone());
+
+        let mut search_items = Vec::<SearchItem>::new();
+        for item in root.data.search_dash_clusters_by_all.elements {
+            match item {
+                SearchElement::MetaItem(meta_item) => search_items = meta_item.items,
+                SearchElement::Other(_) => {}
+            }
         }
 
+        let total = root.data.search_dash_clusters_by_all.metadata.total_result_count;
+        let total_lookup = root.data.search_dash_clusters_by_all.paging.total;
         Ok(SearchResult {
-            elements: items,
+            elements: search_items,
             total,
             total_lookup,
             request_metadata: None,
@@ -400,7 +464,7 @@ impl<'de> Deserialize<'de> for SearchResult {
 
 fn deserialize_search_item<'de, D>(deserializer: D) -> Result<Vec<SearchItem>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     #[derive(serde::Deserialize)]
     #[serde(rename_all(deserialize = "camelCase"))]
