@@ -239,6 +239,7 @@ impl LinkedinSession {
 
             search_response.total = response.total;
             search_response.total_lookup = total_offset;
+            /// offset: 110, total: 119
             info!("offset: {}, total: {}", current_offset, total_offset);
             current_offset += ITEM_PER_PAGE;
         }

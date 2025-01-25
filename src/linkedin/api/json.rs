@@ -78,14 +78,16 @@ pub struct SearchParams {
 
 impl Display for SearchParams {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let output = format!(
-            "keywords: {}, page: {}, end: {}",
-            self.keywords.as_ref().unwrap_or(&"".to_string()),
-            self.page,
-            self.end
-        );
-
         let mut output = String::new();
+        output.push_str(
+            format!(
+                "keywords: {}, page: {}, end: {}",
+                self.keywords.as_ref().unwrap_or(&"".to_string()),
+                self.page,
+                self.end
+            )
+            .as_str(),
+        );
 
         if let Some(first_name) = self.keyword_first_name.as_ref() {
             output.push_str(&format!("keyword_first_name: {}, ", first_name));
@@ -490,7 +492,6 @@ where
         pub text: String,
     }
     #[derive(serde::Deserialize)]
-
     struct PrimarySubtitle {
         pub text: String,
     }
