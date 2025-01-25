@@ -191,24 +191,24 @@ impl LinkedinSession {
         if let Some(countries) = params.countries.as_ref() {
             filters.push(format!(
                 "(key:geoUrn,value:List({}))",
-                countries.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(" | ")
+                countries.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(",")
             ))
         }
         if let Some(network_depth) = params.network_depth.as_ref() {
             filters.push(format!(
                 "(key:network,value:List({}))",
-                network_depth.iter().map(|d| d.to_string()).collect::<Vec<String>>().join(" | ")
+                network_depth.iter().map(|d| d.to_string()).collect::<Vec<String>>().join(",")
             ))
         }
         if let Some(profile_language) = params.profile_language.as_ref() {
-            filters.push(format!("(key:profileLanguage,value:List({}))", profile_language.join(" | ")))
+            filters.push(format!("(key:profileLanguage,value:List({}))", profile_language.join(",")))
         }
         let filter_params = format!("List({})", filters.join(","));
         let keywords = match params.keywords.as_ref() {
             Some(keywords) => keywords,
             None => "",
         };
-        let mut current_offset = if params.page == 0 { 1 } else { params.page * ITEM_PER_PAGE };
+        let mut current_offset = params.page * ITEM_PER_PAGE;
         let mut total_offset = params.end * ITEM_PER_PAGE;
         let mut search_response = SearchResult {
             elements: Vec::with_capacity((total_offset - current_offset) as usize),
@@ -226,6 +226,7 @@ impl LinkedinSession {
                 filter_params
             );
             let headers = Self::create_default_headers(Some(&self.session_id));
+            println!("filter: {}", endpoint);
 
             let response = match self.client.get(endpoint).headers(headers).send().await {
                 Ok(response) => match response.json::<SearchResult>().await {

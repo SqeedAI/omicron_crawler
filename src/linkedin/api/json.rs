@@ -179,7 +179,7 @@ pub struct Position {
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ProfileView {
     pub summary: Option<String>,
-    pub industry_name: String,
+    pub industry_name: Option<String>,
     pub first_name: String,
     pub last_name: String,
     pub location_name: Option<String>,

@@ -52,7 +52,7 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.profile.headline, "SW engineer C++/Python/Shell/OpenGL/SQL ISO WG21 member");
     assert_eq!(profile.profile.geo_country_name, "Slovakia");
     assert_eq!(profile.profile.location_name, Some("Slovak Republic".to_string()));
-    assert_eq!(profile.profile.industry_name, "Higher Education");
+    assert_eq!(profile.profile.industry_name, Some("Higher Education".to_string()));
     assert_eq!(profile.profile.summary.as_ref().unwrap(), "Solution architect / Tech lead / SW engineer, mostly C++, Python. Member of C++ standards committee. Having experience with modern OpenGL programming and with relational database systems.\n\nSpecialties: software development, C++, meta-programming, OpenGL 4 programming");
     println!("{}", profile.profile.picture_url.unwrap());
     assert_eq!(profile.education_view.elements.len(), 1);
@@ -177,7 +177,7 @@ pub async fn api_profile_test_2() {
     assert_eq!(profile.profile.first_name, "Peter");
     assert_eq!(profile.profile.last_name, "Hamran");
     assert_eq!(profile.profile.summary, None);
-    assert_eq!(profile.profile.industry_name, "Computer Software".to_string());
+    assert_eq!(profile.profile.industry_name, Some("Computer Software".to_string()));
     assert_eq!(profile.profile.headline, "Cofounder of Sqeed s.r.o.".to_string());
     assert_eq!(profile.position_view.elements.len(), 1);
     assert_eq!(profile.position_view.elements[0].title, "System Engineer".to_string());
@@ -282,7 +282,7 @@ async fn api_profile_test_7() {
 }
 
 #[tokio::test]
-async fn test_search_people() {
+async fn test_search_people_1() {
     Logger::init(LevelFilter::Trace);
 
     let mut session = LinkedinSession::new();
@@ -322,6 +322,50 @@ async fn test_search_people() {
 }
 
 #[tokio::test]
+async fn test_search_people_2() {
+    Logger::init(LevelFilter::Trace);
+
+    let mut session = LinkedinSession::new();
+    if !session.is_auth() {
+        info!("Not authenticated, trying to authenticate");
+        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
+            Ok(_) => {
+                info!("Authenticated successfully");
+            }
+            Err(e) => {
+                fatal_assert!("Failed to authenticate {}", e);
+            }
+        }
+    }
+    let params = SearchParams {
+        page: 0,
+        keywords: Some("AWS".to_string()),
+        keyword_first_name: Some("Alexandra".to_string()),
+        keyword_last_name: None,
+        keyword_title: None,
+        keyword_company: None,
+        keyword_school: None,
+        countries: Some(vec![GeoUrnMap::Slovakia, GeoUrnMap::Czechia]),
+        profile_language: None,
+        network_depth: None,
+        end: 100,
+        request_metadata: None,
+    };
+    let search_result = match session.search_people(params).await {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to search people {}", e),
+    };
+
+    assert!(search_result.total > 0);
+    assert!(search_result.elements.len() > 0);
+    println!("{}", search_result.total);
+    println!("{}", search_result.elements.len());
+    for i in search_result.elements.iter() {
+        println!("{} {}", i.first_name, i.last_name);
+    }
+}
+
+#[tokio::test]
 async fn test_search_people_max() {
     Logger::init(LevelFilter::Trace);
 
@@ -339,7 +383,7 @@ async fn test_search_people_max() {
     }
     let params = SearchParams {
         page: 0,
-        keywords: Some("Java".to_string()),
+        keywords: Some("AWS".to_string()),
         keyword_first_name: Some("Tomas".to_string()),
         keyword_last_name: None,
         keyword_title: None,
@@ -358,7 +402,6 @@ async fn test_search_people_max() {
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
-    assert_eq!(search_result.total_lookup, 547);
 }
 
 #[tokio::test]

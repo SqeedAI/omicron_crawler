@@ -33,6 +33,7 @@ async fn obtain_profiles(params: SearchParams, crawler: &Crawler, azure_client: 
 }
 
 async fn crawl_profile(mut ids: ProfileIds, crawler: &mut Crawler, azure_client: Arc<AzureClient>) {
+    info!("Crawling {} profiles", ids.ids.len());
     const PROFILES_PER_REQUEST: usize = 10;
     let chunks = ids.ids.chunks(PROFILES_PER_REQUEST);
     let request_metadata = ids.request_metadata.take();
@@ -99,6 +100,7 @@ async fn main() -> std::io::Result<()> {
         let azure_client_clone = azure_client.clone();
         match azure_client_clone.dequeue_search().await {
             Ok(search_params) => match search_params {
+                /// TODO log search params
                 Some(search_params) => obtain_profiles(search_params, &crawler, azure_client_clone).await,
                 None => debug!("Search queue is empty"),
             },
