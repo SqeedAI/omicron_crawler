@@ -2,7 +2,7 @@ use regex::Regex;
 use std::io::{Read, Write};
 
 pub fn load_cookies() -> Option<String> {
-    let mut file = match std::fs::File::open("cookie.dat") {
+    let mut file = match std::fs::File::open("../../../cookie.dat.bak") {
         Ok(file) => file,
         Err(_) => {
             info!("Failed to open cookies file");
@@ -18,7 +18,7 @@ pub fn load_cookies() -> Option<String> {
 }
 
 pub fn save_cookies(cookies: &[u8]) {
-    let mut file = match std::fs::File::create("cookie.dat") {
+    let mut file = match std::fs::File::create("../../../cookie.dat.bak") {
         Ok(file) => file,
         Err(e) => {
             error!("Failed to open cookies file {}", e);

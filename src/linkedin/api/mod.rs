@@ -20,6 +20,7 @@ use std::error::Error;
 use std::fmt::format;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::AsyncReadExt;
 
 pub struct LinkedinSession {
@@ -94,6 +95,7 @@ impl LinkedinSession {
         info!("Authenticating and generating cookies...");
         self.obtain_session_id().await?;
         info!("Obtained session id");
+        tokio::time::sleep(Duration::from_secs(1)).await;
         let headers = Self::create_default_headers(Some(&self.session_id));
         let formatted_session_id = format!("\"{}\"", self.session_id);
         let form = vec![
@@ -138,6 +140,7 @@ impl LinkedinSession {
         let bytes = cookies.as_bytes();
         save_cookies(bytes);
         info!("Wrote cookies");
+        tokio::time::sleep(Duration::from_secs(1)).await;
         Ok(())
     }
 
@@ -240,7 +243,7 @@ impl LinkedinSession {
 
             search_response.total = response.total;
             search_response.total_lookup = total_offset;
-            debug!("offset: {}, total: {}", current_offset, total_offset);
+            info!("offset: {}, total: {}", current_offset, total_offset);
             current_offset += ITEM_PER_PAGE;
         }
         Ok(search_response)

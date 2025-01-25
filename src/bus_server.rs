@@ -27,7 +27,7 @@ async fn obtain_profiles(params: SearchParams, crawler: &Crawler, azure_client: 
         }
     };
     tokio::spawn(async move {
-        info!("Pushing search result to manager");
+        info!("Pushing {} search result to manager", profiles.elements.len());
         azure_client.push_to_manager(&profiles, Label::SearchComplete).await;
     });
 }
