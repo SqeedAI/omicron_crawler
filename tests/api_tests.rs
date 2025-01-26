@@ -56,7 +56,10 @@ pub async fn api_profile_test_1() {
     assert_eq!(profile.profile.summary.as_ref().unwrap(), "Solution architect / Tech lead / SW engineer, mostly C++, Python. Member of C++ standards committee. Having experience with modern OpenGL programming and with relational database systems.\n\nSpecialties: software development, C++, meta-programming, OpenGL 4 programming");
     println!("{}", profile.profile.picture_url.unwrap());
     assert_eq!(profile.education_view.elements.len(), 1);
-    assert_eq!(profile.education_view.elements[0].school_name, "University of Zilina");
+    assert_eq!(
+        profile.education_view.elements[0].school_name,
+        Some("University of Zilina".to_string())
+    );
     assert_eq!(
         profile.education_view.elements[0].field_of_study,
         Some("Applied Computer Science".to_string())

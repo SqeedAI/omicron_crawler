@@ -195,7 +195,7 @@ pub struct EducationView {
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Education {
     pub degree_name: Option<String>,
-    pub school_name: String,
+    pub school_name: Option<String>,
     pub field_of_study: Option<String>,
     pub school_urn: Option<String>,
     pub time_period: Option<TimePeriod>,

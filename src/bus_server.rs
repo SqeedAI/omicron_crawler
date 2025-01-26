@@ -26,6 +26,7 @@ async fn obtain_profiles(params: SearchParams, crawler: &Crawler, azure_client: 
             return;
         }
     };
+    //TODO Retry in case of failure
     tokio::spawn(async move {
         info!("Pushing {} search result to manager", profiles.elements.len());
         azure_client.push_to_manager(&profiles, Label::SearchComplete).await;
@@ -55,12 +56,14 @@ async fn crawl_profile(mut ids: ProfileIds, crawler: &mut Crawler, azure_client:
                 profiles: crawled_profiles,
                 request_metadata: metadata,
             };
+            //TODO Retry in case of failure
             azure_client_clone.push_to_manager(crawled_profiles, Label::ProfilesComplete).await
         });
         if SHUTDOWN_SIGNAL.load(Relaxed) == true {
             break;
         }
     }
+
     if SHUTDOWN_SIGNAL.load(Relaxed) == true {
         let remaining_profiles: Vec<String> = ids.ids.iter().skip(current_profile).map(|p| p.to_string()).collect();
         info!(
