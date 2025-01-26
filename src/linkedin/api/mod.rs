@@ -13,7 +13,7 @@ use cookie::Cookie;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
 use reqwest::cookie::CookieStore as CookieStoreTrait;
-use reqwest::{Client, Url};
+use reqwest::{Client, Proxy, Url};
 use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
 use std::error::Error;
@@ -281,8 +281,16 @@ impl LinkedinSession {
         }
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);
+        let proxy = Proxy::http(
+            "http://customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0404158300-sesstime-30:TWSIZxrjcUPBowSrGqz_C1@pr.oxylabs.io:7777",
+        )
+        .unwrap();
         let client = fatal_unwrap_e!(
-            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            Client::builder()
+                .cookie_store(true)
+                .cookie_provider(cookie_store.clone())
+                .proxy(proxy)
+                .build(),
             "Failed to create client {}"
         );
         Self {
