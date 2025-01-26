@@ -6,7 +6,7 @@ use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::errors::CrawlerResult;
 use omicron_crawler::linkedin::api::crawler::Crawler;
 use omicron_crawler::linkedin::api::json::{SearchParams, SearchResult};
-use omicron_crawler::linkedin::api::rate_limits::RateLimits;
+use omicron_crawler::linkedin::api::rate_limits::RateLimiter;
 use omicron_crawler::linkedin::api::LinkedinSession;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::{fatal_assert, fatal_unwrap, fatal_unwrap_e};
@@ -89,7 +89,7 @@ async fn main() -> std::io::Result<()> {
     Logger::init(env.log_level);
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
-    let mut crawler = Crawler::new(RateLimits::new(100, 800), username, password).await;
+    let mut crawler = Crawler::new(RateLimiter::new(100, 800), username, password).await;
     let azure_client = Arc::new(AzureClient::new().await);
 
     // Spawn CTRL+C handler task

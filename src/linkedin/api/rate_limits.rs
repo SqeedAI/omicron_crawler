@@ -1,20 +1,22 @@
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::{Acquire, Release};
 use std::time::Duration;
 
-pub struct RateLimits {
+pub struct RateLimiter {
     profiles_per_hour: u32,
     avg_response_time_ms: u32,
     waits: Vec<u64>,
-    current: *const u64,
-    end: *const u64,
+    current: AtomicUsize,
+    end: usize,
 }
 
-impl RateLimits {
+impl RateLimiter {
     pub fn new(profiles_per_hour: u32, avg_response_time_ms: u32) -> Self {
-        let waits = Self::generate_random_waits(profiles_per_hour, avg_response_time_ms);
-        let current = waits.as_ptr();
-        let end = unsafe { current.add(waits.len()) };
+        let mut waits = Self::generate_random_waits(profiles_per_hour, avg_response_time_ms);
+        let current = AtomicUsize::new(0);
+        let end = waits.len();
         Self {
             profiles_per_hour,
             waits,
@@ -37,16 +39,22 @@ impl RateLimits {
         waits.shuffle(&mut thread_rng());
         waits
     }
-}
 
-impl Iterator for RateLimits {
-    type Item = Duration;
+    pub fn next(&self) -> Option<Duration> {
+        let end = self.end;
+        let current_local = match self.current.fetch_update(Release, Acquire, |current| {
+            let new = current + 1;
+            if new >= end {
+                Some(0)
+            } else {
+                Some(new)
+            }
+        }) {
+            Ok(current) => current,
+            Err(_) => return None,
+        };
+        let wait_time = unsafe { self.waits.get_unchecked(current_local) };
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.current = unsafe { self.current.add(1) };
-        if self.current >= self.end {
-            self.current = self.waits.as_ptr();
-        }
-        unsafe { Some(Duration::from_secs(*self.current)) }
+        unsafe { Some(Duration::from_secs(*wait_time)) }
     }
 }

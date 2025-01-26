@@ -1,7 +1,7 @@
 use crate::azure::json::{CrawledProfiles, ProfileIds};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
-use crate::linkedin::api::rate_limits::RateLimits;
+use crate::linkedin::api::rate_limits::RateLimiter;
 use crate::linkedin::api::LinkedinSession;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -9,11 +9,11 @@ use std::time::Duration;
 
 pub struct Crawler {
     linked_in_session: LinkedinSession,
-    rate_limits: RateLimits,
+    rate_limits: RateLimiter,
 }
 
 impl Crawler {
-    pub async fn new(rate_limits: RateLimits, username: &str, password: &str) -> Self {
+    pub async fn new(rate_limits: RateLimiter, username: &str, password: &str) -> Self {
         let mut linked_in_session = LinkedinSession::new();
         if !linked_in_session.is_auth {
             match linked_in_session.authenticate(username, password).await {
@@ -30,7 +30,7 @@ impl Crawler {
     pub async fn search_people(&self, params: SearchParams) -> CrawlerResult<SearchResult> {
         self.linked_in_session.search_people(params).await
     }
-    pub async fn profiles(&mut self, ids: &[String], interrupt_signal: Option<&AtomicBool>) -> CrawlerResult<Vec<Profile>> {
+    pub async fn profiles(&self, ids: &[String], interrupt_signal: Option<&AtomicBool>) -> CrawlerResult<Vec<Profile>> {
         let mut crawled_profiles = Vec::with_capacity(ids.len());
         for profile in ids.iter() {
             if let Some(signal) = interrupt_signal {
