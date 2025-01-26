@@ -1,8 +1,7 @@
 use omicron_crawler::driver::service::ChromeDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
-use omicron_crawler::fatal_unwrap_e;
-use omicron_crawler::linkedin::web_driver::sales_crawler::SalesCrawler;
+use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -54,7 +53,7 @@ async fn test_multiple_sessions() {
         for _ in 0..2 {
             scope.spawn(async {
                 let proxy = pool.acquire().unwrap();
-                let crawler = SalesCrawler::new(proxy).await;
+                let crawler = Crawler::new(proxy).await;
                 fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
             });
         }

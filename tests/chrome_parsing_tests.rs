@@ -1,8 +1,7 @@
 use omicron_crawler::driver::service::ChromeDriverService;
 use omicron_crawler::driver::session_manager::SessionManager;
 use omicron_crawler::env::get_env;
-use omicron_crawler::fatal_unwrap_e;
-use omicron_crawler::linkedin::web_driver::sales_crawler::SalesCrawler;
+use omicron_crawler::linkedin::crawler::Crawler;
 use omicron_crawler::logger::Logger;
 use std::sync::Arc;
 
@@ -22,7 +21,7 @@ async fn test_parse_1() {
     .await;
     let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
-    let crawler = SalesCrawler::new(proxy).await;
+    let crawler = Crawler::new(proxy).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAWs1dABZXg7RDqKugFxlSeo7gasFL1FPHQ,NAME_SEARCH,cypw?_ntb=xTZht7tmSNWO81Egbmk6Xg%3D%3D";
     let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
@@ -95,7 +94,7 @@ async fn test_parse_2() {
     .await;
     let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
-    let crawler = SalesCrawler::new(proxy).await;
+    let crawler = Crawler::new(proxy).await;
     let profile_url =
         "https://www.linkedin.com/sales/lead/ACwAAAy0mZcBlmERvP-yDTL3gnlTLSELF6c7hrk,NAME_SEARCH,UDAQ?_ntb=aRijRPOnTBeuYBCnRY718Q%3D%3D";
     let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
@@ -173,7 +172,7 @@ async fn test_parse_3() {
     .await;
     let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
-    let crawler = SalesCrawler::new(proxy).await;
+    let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAACqD0w0BfMn9-aCXZ3eaubNSkpwpMw-3XLw,NAME_SEARCH,4Pzc";
     let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Peter Hamran");
@@ -242,7 +241,7 @@ async fn test_parse_4() {
     .await;
     let pool = &manager.pool;
     let proxy = pool.acquire().unwrap();
-    let crawler = SalesCrawler::new(proxy).await;
+    let crawler = Crawler::new(proxy).await;
     let profile_url = "https://www.linkedin.com/sales/lead/ACwAABpJtzoBf8gnSQxzTTAesZe6DCoutpzIcY0,NAME_SEARCH,ZBW0";
     let results = fatal_unwrap_e!(crawler.parse_profile(profile_url).await, "{}");
     assert_eq!(results.name, "Kamil Pšenák");
