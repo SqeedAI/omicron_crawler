@@ -64,7 +64,7 @@ impl BrowserConfig for Firefox {
 
         fatal_unwrap_e!(caps.set_encoded_profile(profile_path), "Failed to set profile {}");
         let mut prefs = FirefoxPreferences::new();
-        fatal_unwrap_e!(caps.set_headless(), "Failed to set headless {}");
+        // fatal_unwrap_e!(caps.set_headless(), "Failed to set headless {}");
 
         fatal_unwrap_e!(
             prefs.set("privacy.trackingprotection.enabled", false),

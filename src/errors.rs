@@ -1,10 +1,13 @@
 use std::fmt::{Display, Formatter};
 pub type CrawlerResult<T> = Result<T, CrawlerError>;
-
 pub enum CrawlerError {
     ParseError(String),
     InteractionError(String),
     DriverError(String),
+    SessionError(String),
+    LinkedinError(String),
+    BusError(String),
+    QueueError(String),
 }
 
 impl Display for CrawlerError {
@@ -13,6 +16,10 @@ impl Display for CrawlerError {
             CrawlerError::ParseError(e) => write!(f, "ParseError: {}", e),
             CrawlerError::InteractionError(e) => write!(f, "InteractionError: {}", e),
             CrawlerError::DriverError(e) => write!(f, "DriverError: {}", e),
+            CrawlerError::SessionError(e) => write!(f, "SessionError: {}", e),
+            CrawlerError::BusError(e) => write!(f, "BusError {}", e),
+            CrawlerError::QueueError(e) => write!(f, "QueueError {}", e),
+            CrawlerError::LinkedinError(e) => write!(f, "LinkedinError {}", e),
         }
     }
 }

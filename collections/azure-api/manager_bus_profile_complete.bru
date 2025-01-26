@@ -1,0 +1,59 @@
+meta {
+  name: manager_bus_profile_complete
+  type: http
+  seq: 7
+}
+
+post {
+  url: https://sqeed-dev-bus.servicebus.windows.net/manager/messages
+  body: json
+  auth: none
+}
+
+headers {
+  BrokerProperties: {"Label":"profile_complete"}
+  ~api-version: 2022-01-01-preview
+}
+
+body:json {
+  {
+    "test":"Search"
+  }
+}
+
+body:text {
+  Hello World
+}
+
+body:xml {
+  Test1
+}
+
+script:pre-request {
+  const CryptoJS = require('crypto-js');
+  
+  function createServiceBusOrEventHubsSASToken(resourceUri, sasKeyName, sasKey) {
+      if (!resourceUri || !sasKeyName  || !sasKey) {
+          throw "Missing required parameter";
+      }
+      const encoded = encodeURIComponent(resourceUri);
+      const now = new Date();
+      const minute = 60;
+      const ttl = Math.round(now.getTime() / 1000) + minute;
+      const signature = encoded + '\n' + ttl;
+      const hash = CryptoJS.HmacSHA256(signature, sasKey).toString(CryptoJS.enc.Base64);
+    console.log(hash);
+    console.log(signature);
+    console.log(encoded);
+      return 'SharedAccessSignature sr=' + encoded + '&sig=' +
+          encodeURIComponent(hash) + '&se=' + ttl + '&skn=' + sasKeyName;
+  }
+  
+  const uri = 'https://sqeed-dev-bus.servicebus.windows.net/manager/';  // Your Service Bus namespace
+  const sasKeyName = 'rw';  // The name of your Shared Access Policy
+  const sasKey = 'bC3swcT8ywbPHpNgSx4eJVG6tkhBtlC8b+ASbLzwa+4=';  // Your primary/secondary key
+  
+  const token = createServiceBusOrEventHubsSASToken(uri, sasKeyName, sasKey);
+  req.setHeader('Authorization', token);
+  req.setHeader('Date', new Date().toUTCString());
+}

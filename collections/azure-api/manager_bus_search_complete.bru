@@ -1,0 +1,222 @@
+meta {
+  name: manager_bus_search_complete
+  type: http
+  seq: 6
+}
+
+post {
+  url: https://sqeed-dev-bus.servicebus.windows.net/manager/messages
+  body: json
+  auth: none
+}
+
+headers {
+  BrokerProperties: {"Label":"search_complete"}
+  ~api-version: 2022-01-01-preview
+}
+
+body:json {
+  {
+    "elements": [
+      {
+        "first_name": "Peter",
+        "last_name": "Pavlenko",
+        "subtitle": "C++ Software Engineer",
+        "summary": "Certifications: Unreal Engine C++ Developer: Learn C++ and Make Video Games",
+        "url": "https://www.linkedin.com/in/ppavlenko?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAAv6A7sBwLnB3Twlw70VyRfxDr7HbbdbIOc",
+        "profile_urn": "ACoAAAv6A7sBwLnB3Twlw70VyRfxDr7HbbdbIOc"
+      },
+      {
+        "first_name": "Adam",
+        "last_name": "Feranec",
+        "subtitle": "Software Engineer | C++",
+        "summary": "Past: Software Engineer at Avast - C++ Windows Endpoint Security",
+        "url": "https://www.linkedin.com/in/adam-feranec-33111b267?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAEFV2RUBopkhJPluLgQQBor78OBkTfVqw7U",
+        "profile_urn": "ACoAAEFV2RUBopkhJPluLgQQBor78OBkTfVqw7U"
+      },
+      {
+        "first_name": "Andrii",
+        "last_name": "Solodieiev",
+        "subtitle": "C++ Developer",
+        "summary": "Past: Startup C++/Go Developer at Self-employed",
+        "url": "https://www.linkedin.com/in/andrii-solodieiev-403339255?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAD7gJgMBctfbsJU6mk9zzbjZuFN58QoLu_c",
+        "profile_urn": "ACoAAD7gJgMBctfbsJU6mk9zzbjZuFN58QoLu_c"
+      },
+      {
+        "first_name": "Dmytro",
+        "last_name": "Lotnyk,",
+        "subtitle": "Python C++ developer at Solar Turbines",
+        "summary": "Summary: ..., C++, Git, and Matlab. Strong...",
+        "url": "https://www.linkedin.com/in/dmytro-lotnyk-phd-319936159?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAACYMGUUB1oLCSAjv9LyFBo0FnrDZFzTB7SE",
+        "profile_urn": "ACoAACYMGUUB1oLCSAjv9LyFBo0FnrDZFzTB7SE"
+      },
+      {
+        "first_name": "Vladimír",
+        "last_name": "Varga",
+        "subtitle": "Software architect and C++ Developer",
+        "summary": "Past: Lead Software Developer at GlobalLogic - ...Technologies: C++, Qml, Objective-C++, Java JNI, C++/CX...",
+        "url": "https://www.linkedin.com/in/vargavl?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAABAl4EBET2B_4FsR-PdMc1AtqJbr5SL1a8",
+        "profile_urn": "ACoAAABAl4EBET2B_4FsR-PdMc1AtqJbr5SL1a8"
+      },
+      {
+        "first_name": "Ján",
+        "last_name": "Bracho",
+        "subtitle": "Qt/C++ programming",
+        "summary": "Current: Qt/C++ programmer at PDFix",
+        "url": "https://www.linkedin.com/in/j%C3%A1n-bracho-0566631a6?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAADAmooIBD-0EJZyo73J9CrO8NilVB4xM8fY",
+        "profile_urn": "ACoAADAmooIBD-0EJZyo73J9CrO8NilVB4xM8fY"
+      },
+      {
+        "first_name": "Max",
+        "last_name": "Chernikov",
+        "subtitle": "Java, C/C++, Python, Javascript, Embedded Software developer",
+        "summary": "Projects: Traffic Sniffer/Amalyzer - Traffic Analyzer is a simple C++ program that uses...",
+        "url": "https://www.linkedin.com/in/max-chernikov-019875245?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAADzRiNUBO16SPitVZGq_Opv6Yns-Ryn9Yrc",
+        "profile_urn": "ACoAADzRiNUBO16SPitVZGq_Opv6Yns-Ryn9Yrc"
+      },
+      {
+        "first_name": "Martin",
+        "last_name": "Slavkovský",
+        "subtitle": "NLP, Computer Vision, ObjectDetection, python, c++",
+        "summary": "Past: Machine Learning Specialist at Photoneo - ...with legacy systems in C++...",
+        "url": "https://www.linkedin.com/in/martin-slavkovsk%C3%BD-625348151?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAACSJMX0Bq-PmgSdpx61CQYHkrGSQoiy1dkc",
+        "profile_urn": "ACoAACSJMX0Bq-PmgSdpx61CQYHkrGSQoiy1dkc"
+      },
+      {
+        "first_name": "Marek",
+        "last_name": "Maczkó",
+        "subtitle": "C++ developer",
+        "summary": "Current: C++ Developer at Indra Avitech",
+        "url": "https://www.linkedin.com/in/marek-maczk%C3%B3-485068218?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAADbTXqUB1WqAJImvWJOPFT-jzXVKeCMn5uY",
+        "profile_urn": "ACoAADbTXqUB1WqAJImvWJOPFT-jzXVKeCMn5uY"
+      },
+      {
+        "first_name": "Artur",
+        "last_name": "Shults",
+        "subtitle": "C++ Developer",
+        "summary": "Current: C++ Developer at Frequentis",
+        "url": "https://www.linkedin.com/in/artur-shults-582463172?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAACkAjXIBEnvZN1mewN5d8jdAhXpJv8yH8W4",
+        "profile_urn": "ACoAACkAjXIBEnvZN1mewN5d8jdAhXpJv8yH8W4"
+      },
+      {
+        "first_name": "Lukas",
+        "last_name": "Sroba",
+        "subtitle": "C++ Developer",
+        "summary": "Current: Software Development Engineer at Kapsch TrafficCom AG - - C++ application development - optical setup tests...",
+        "url": "https://www.linkedin.com/in/lukas-sroba-05847397?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAABSJK4QBEXqvOmN8cvQvGzyi9sg_nFvLqaE",
+        "profile_urn": "ACoAABSJK4QBEXqvOmN8cvQvGzyi9sg_nFvLqaE"
+      },
+      {
+        "first_name": "Marek",
+        "last_name": "Vrbka",
+        "subtitle": "Embedded • Rust • C++",
+        "summary": "Summary: ...and C++ programming languages...",
+        "url": "https://www.linkedin.com/in/marek-vrbka?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAEDDlkYBYQEUVUuVTqOz8ujBkWW2NLhoiao",
+        "profile_urn": "ACoAAEDDlkYBYQEUVUuVTqOz8ujBkWW2NLhoiao"
+      },
+      {
+        "first_name": "Vilo",
+        "last_name": "Chatrnuch",
+        "subtitle": "c++ software developer at SAP",
+        "summary": "Current: freelance c++ software developer at SAP",
+        "url": "https://www.linkedin.com/in/vilo-chatrnuch-7a3ba7130?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAACA2YasBTkfyAd4gZrFgIR49AG3vKYXRVZ8",
+        "profile_urn": "ACoAACA2YasBTkfyAd4gZrFgIR49AG3vKYXRVZ8"
+      },
+      {
+        "first_name": "Roman",
+        "last_name": "Svozil",
+        "subtitle": "Software Engineer | Specializing in C++ Development",
+        "summary": "Skills: C++0x",
+        "url": "https://www.linkedin.com/in/roman-svozil?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAADR5DTYBO2quiJm-E_mzyaJka0n5-EmZeuY",
+        "profile_urn": "ACoAADR5DTYBO2quiJm-E_mzyaJka0n5-EmZeuY"
+      },
+      {
+        "first_name": "Tomáš",
+        "last_name": "Obrtáč",
+        "subtitle": "Embedded developer C/C++ freelance",
+        "summary": "Current: Self Employed (freelance) - Embedded(C/C++) Developer...",
+        "url": "https://www.linkedin.com/in/tom%C3%A1%C5%A1-obrt%C3%A1%C4%8D?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAB0YfWoBw01AAsIStyE-T-typ_s8nE5jTW4",
+        "profile_urn": "ACoAAB0YfWoBw01AAsIStyE-T-typ_s8nE5jTW4"
+      },
+      {
+        "first_name": "Martin",
+        "last_name": "Miša",
+        "subtitle": "C++ Developer at SAP",
+        "summary": "Past: Programmer at Analytica Design - Android/iOS Developer 2yrs, C++ Developer 3yrs",
+        "url": "https://www.linkedin.com/in/martin-misa?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAABAbOBkBAK5E_stVP4ex6jMlV2qABdj2n3E",
+        "profile_urn": "ACoAABAbOBkBAK5E_stVP4ex6jMlV2qABdj2n3E"
+      },
+      {
+        "first_name": "Jakub",
+        "last_name": "Kuljovský",
+        "subtitle": "C++ developer",
+        "summary": "Skills: C++",
+        "url": "https://www.linkedin.com/in/jakub-kuljovsky?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAC6q3goBKDdcJlpB6GQPpjYpZdjcNZkhJxs",
+        "profile_urn": "ACoAAC6q3goBKDdcJlpB6GQPpjYpZdjcNZkhJxs"
+      },
+      {
+        "first_name": "Anna",
+        "last_name": "Ivanova",
+        "subtitle": "Technical Director, C++ / UE5 programmer",
+        "summary": "Current: Lead C++/UE5 programmer at Fracture Labs",
+        "url": "https://www.linkedin.com/in/anna-ivanova-3b065a67?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAA4oErQBQWbEWAPq7AsU7PeiYGRMYk8Pwck",
+        "profile_urn": "ACoAAA4oErQBQWbEWAPq7AsU7PeiYGRMYk8Pwck"
+      },
+      {
+        "first_name": "Peter",
+        "last_name": "Lukacovic",
+        "subtitle": "developer c/c++, MS Visual Fox Pro",
+        "summary": "Current: C++ Developer at Honeywell",
+        "url": "https://www.linkedin.com/in/peter-lukacovic-16081970?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAA8SLpgBInYRawveZeY5rq4RB0V4wjX0SCY",
+        "profile_urn": "ACoAAA8SLpgBInYRawveZeY5rq4RB0V4wjX0SCY"
+      },
+      {
+        "first_name": "Martin",
+        "last_name": "V.",
+        "subtitle": "Machine SW Developer C++/C#",
+        "summary": "Current: Machine SW Developer C++/C# at Muehlbauer Automation s.r.o.",
+        "url": "https://www.linkedin.com/in/martin-v-09a470289?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAEYDd3YB7GksL3-wm-NEbsgtd1Iy-n5ndwI",
+        "profile_urn": "ACoAAEYDd3YB7GksL3-wm-NEbsgtd1Iy-n5ndwI"
+      }
+    ],
+    "request_metadata": null,
+    "total": 8181176
+  }
+}
+
+body:text {
+  Hello World
+}
+
+body:xml {
+  Test1
+}
+
+script:pre-request {
+  const CryptoJS = require('crypto-js');
+  
+  function createServiceBusOrEventHubsSASToken(resourceUri, sasKeyName, sasKey) {
+      if (!resourceUri || !sasKeyName  || !sasKey) {
+          throw "Missing required parameter";
+      }
+      const encoded = encodeURIComponent(resourceUri);
+      const now = new Date();
+      const minute = 60;
+      const ttl = Math.round(now.getTime() / 1000) + minute;
+      const signature = encoded + '\n' + ttl;
+      const hash = CryptoJS.HmacSHA256(signature, sasKey).toString(CryptoJS.enc.Base64);
+    console.log(hash);
+    console.log(signature);
+    console.log(encoded);
+      return 'SharedAccessSignature sr=' + encoded + '&sig=' +
+          encodeURIComponent(hash) + '&se=' + ttl + '&skn=' + sasKeyName;
+  }
+  
+  const uri = 'https://sqeed-dev-bus.servicebus.windows.net/manager/';  // Your Service Bus namespace
+  const sasKeyName = 'rw';  // The name of your Shared Access Policy
+  const sasKey = 'bC3swcT8ywbPHpNgSx4eJVG6tkhBtlC8b+ASbLzwa+4=';  // Your primary/secondary key
+  
+  const token = createServiceBusOrEventHubsSASToken(uri, sasKeyName, sasKey);
+  req.setHeader('Authorization', token);
+  req.setHeader('Date', new Date().toUTCString());
+}
