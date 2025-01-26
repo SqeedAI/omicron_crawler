@@ -1,3 +1,4 @@
+use chrono::Utc;
 use log::{LevelFilter, Metadata, Record};
 use std::sync::Once;
 
@@ -11,7 +12,8 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        println!("[{}] {}", record.level(), record.args());
+        let now = Utc::now();
+        println!("[{}][{}] {}", now.to_rfc3339(), record.level(), record.args());
     }
 
     fn flush(&self) {}

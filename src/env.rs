@@ -1,5 +1,5 @@
 use crate::env::Browser::{Chrome, Firefox};
-use crate::linkedin::profiles::Profile;
+use crate::linkedin::web_driver::profiles::Profile;
 use log::Level;
 use serde::de::Unexpected::Str;
 use std::fmt::{Display, Formatter};
@@ -20,7 +20,6 @@ impl Display for Browser {
         }
     }
 }
-
 pub struct Env {
     pub log_level: log::LevelFilter,
     pub port: u16,
@@ -32,6 +31,21 @@ pub struct Env {
     pub driver_host: String,
     pub driver_port: u16,
     pub driver_session_count: u16,
+    pub azure_search_uri: String,
+    pub azure_search_dequeue_api: String,
+    pub azure_profile_uri: String,
+    pub azure_profile_dequeue_api: String,
+    pub azure_profile_queue_api: String,
+    pub azure_manager_bus_uri: String,
+    pub azure_manager_bus_api: String,
+    pub azure_sas_key_name: String,
+    pub azure_manager_bus_key: String,
+    pub azure_sas_profile_key: String,
+    pub azure_sas_search_key: String,
+    pub manager_search_api: String,
+    pub manager_profile_api: String,
+    pub linkedin_username: String,
+    pub linkedin_password: String,
 }
 
 static ENV: OnceCell<Env> = OnceCell::const_new();
@@ -52,10 +66,63 @@ pub fn env_log_level() -> log::LevelFilter {
         Err(_) => log::LevelFilter::Info,
     }
 }
-pub fn env_host() -> (String, u16) {
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse().unwrap_or(8080);
-    (host, port)
+pub fn env_azure_search_uri() -> String {
+    std::env::var("AZURE_SEARCH_URI").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_azure_search_dequeue_api() -> String {
+    std::env::var("AZURE_SEARCH_DEQUEUE_API").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_azure_profile_uri() -> String {
+    std::env::var("AZURE_PROFILE_URI").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_azure_profile_dequeue_api() -> String {
+    std::env::var("AZURE_PROFILE_DEQUEUE_API").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_azure_profile_queue_api() -> String {
+    std::env::var("AZURE_PROFILE_QUEUE_API").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_manager_bus_uri() -> String {
+    std::env::var("AZURE_MANAGER_BUS_URI").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_manager_bus_api() -> String {
+    std::env::var("AZURE_MANAGER_BUS_API").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_sas_key_name() -> String {
+    std::env::var("AZURE_SAS_KEY_NAME").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_manager_bus_key() -> String {
+    std::env::var("AZURE_MANAGER_BUS_KEY").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_sas_profile_key() -> String {
+    std::env::var("AZURE_SAS_PROFILE_KEY").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_azure_sas_search_key() -> String {
+    std::env::var("AZURE_SAS_SEARCH_KEY").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_linkedin_username() -> String {
+    std::env::var("LINKEDIN_USERNAME").unwrap_or_else(|_| "".to_string())
+}
+pub fn env_linkedin_password() -> String {
+    std::env::var("LINKEDIN_PASSWORD").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_host() -> String {
+    std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
+}
+
+pub fn env_manager_search_api() -> String {
+    std::env::var("MANAGER_SEARCH_API").unwrap_or_else(|_| "".to_string())
+}
+
+pub fn env_manager_profile_api() -> String {
+    std::env::var("MANAGER_PROFILE_API").unwrap_or_else(|_| "".to_string())
 }
 
 pub fn env_port() -> u16 {
@@ -147,7 +214,7 @@ pub async fn get_env() -> &'static Env {
         Env {
             log_level: env_log_level(),
             port: env_port(),
-            host: env_driver_host(),
+            host: env_host(),
             driver_path,
             browser_binary_path,
             profile_path,
@@ -155,6 +222,21 @@ pub async fn get_env() -> &'static Env {
             driver_port: env_driver_port(),
             driver_host: env_driver_host(),
             driver_session_count: env_driver_session_count(),
+            azure_search_uri: env_azure_search_uri(),
+            azure_search_dequeue_api: env_azure_search_dequeue_api(),
+            azure_profile_uri: env_azure_profile_uri(),
+            azure_profile_dequeue_api: env_azure_profile_dequeue_api(),
+            azure_profile_queue_api: env_azure_profile_queue_api(),
+            azure_manager_bus_uri: env_azure_manager_bus_uri(),
+            azure_manager_bus_api: env_azure_manager_bus_api(),
+            azure_sas_key_name: env_azure_sas_key_name(),
+            azure_manager_bus_key: env_azure_manager_bus_key(),
+            azure_sas_profile_key: env_azure_sas_profile_key(),
+            azure_sas_search_key: env_azure_sas_search_key(),
+            manager_search_api: env_manager_search_api(),
+            manager_profile_api: env_manager_profile_api(),
+            linkedin_username: env_linkedin_username(),
+            linkedin_password: env_linkedin_password(),
         }
     })
     .await
