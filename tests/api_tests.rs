@@ -469,6 +469,10 @@ async fn test_search_people_max() {
         Err(e) => panic!("Failed to search people {}", e),
     };
 
+    for i in search_result.elements.iter() {
+        println!("{:?}", i.url);
+    }
+
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
 }
