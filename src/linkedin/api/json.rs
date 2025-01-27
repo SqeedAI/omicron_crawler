@@ -517,7 +517,8 @@ where
             None => return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity")),
         };
 
-        if entity_result.entity_custom_tracking_info.member_distance == "OUT_OF_NETWORK" {
+        if entity_result.title.text == "LinkedIn Member" {
+            trace!("outside network filtered out");
             continue;
         }
 
