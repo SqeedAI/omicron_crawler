@@ -84,6 +84,7 @@ impl LinkedinSession {
         let session_id_cookie = cookies.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID").unwrap();
 
         let cookie_raw = session_id_cookie.value();
+        debug!("{}", cookie_raw);
         self.session_id = cookie_raw.replace("\"", "").to_string();
         Ok(())
     }
@@ -285,12 +286,21 @@ impl LinkedinSession {
         }
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);
-        let proxy = Proxy::http("http://user-sqeed_i0J4T:fqXJbuiUEHaXyFd6DCQZ_+@ddc.oxylabs.io:8001").unwrap();
+        let https_proxy = Proxy::https("ddc.oxylabs.io:8001")
+            .unwrap()
+            .basic_auth("sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+
+        let http_proxy = Proxy::http("ddc.oxylabs.io:8001")
+            .unwrap()
+            .basic_auth("sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+
         let client = fatal_unwrap_e!(
             Client::builder()
                 .cookie_store(true)
                 .cookie_provider(cookie_store.clone())
-                .proxy(proxy)
+                .proxy(https_proxy)
+                .proxy(http_proxy)
+                .connection_verbose(true)
                 .build(),
             "Failed to create client {}"
         );

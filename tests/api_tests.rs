@@ -7,6 +7,7 @@ use omicron_crawler::logger::Logger;
 use serde::de::Unexpected::Str;
 
 //TODO [ERROR] Failed to crawl profile ACoAAEJ2X3QB2V1z5kXcnf2j36eoSXDcz8bRVJw reason: SessionError: Failed to parse profile reqwest::Error { kind: Decode, source: Error("missing field `timePeriod`", line: 1, column: 12934) }
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_auth_test() {
     let mut linkedin_session = LinkedinSession::new();

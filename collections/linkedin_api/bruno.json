@@ -5,5 +5,17 @@
   "ignore": [
     "node_modules",
     ".git"
-  ]
+  ],
+  "proxy": {
+    "enabled": true,
+    "protocol": "http",
+    "hostname": "ddc.oxylabs.io",
+    "port": 8001,
+    "auth": {
+      "enabled": true,
+      "username": "sqeed_i0J4T",
+      "password": "fqXJbuiUEHaXyFd6DCQZ_+"
+    },
+    "bypassProxy": ""
+  }
 }
