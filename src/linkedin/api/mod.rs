@@ -285,10 +285,7 @@ impl LinkedinSession {
         }
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);
-        let proxy = Proxy::http(
-            "http://customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0404158300-sesstime-30:TWSIZxrjcUPBowSrGqz_C1@pr.oxylabs.io:7777",
-        )
-        .unwrap();
+        let proxy = Proxy::http("http://user-sqeed_i0J4T:fqXJbuiUEHaXyFd6DCQZ_+@ddc.oxylabs.io:8001").unwrap();
         let client = fatal_unwrap_e!(
             Client::builder()
                 .cookie_store(true)

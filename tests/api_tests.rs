@@ -32,6 +32,7 @@ pub async fn api_skills_test() {
 }
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_1() {
+    Logger::init(LevelFilter::Trace);
     let mut linkedin_session = LinkedinSession::new();
     let mut profile = match linkedin_session.profile("matus-chochlik-154a7827").await {
         Ok(profile) => profile,
