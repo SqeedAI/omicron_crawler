@@ -175,7 +175,7 @@ pub struct Profile {
 
 fn deserialize_profile_urn<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     #[derive(serde::Deserialize)]
     #[serde(rename_all(deserialize = "camelCase"))]
