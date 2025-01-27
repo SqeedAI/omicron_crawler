@@ -9,6 +9,7 @@ use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Pro
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
 use actix_web::cookie::CookieJar;
 use actix_web::web::Json;
+use chrono::format;
 use cookie::Cookie;
 use http::{HeaderMap, HeaderValue};
 use regex::Regex;
@@ -18,27 +19,22 @@ use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
 use std::error::Error;
 use std::fmt::format;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
 
-pub struct LinkedinSession {
-    session_id: String,
+pub struct LinkedinClient {
+    session_id: Option<String>,
     client: Client,
     cookie_store: Arc<CookieStoreMutex>,
-    is_auth: bool,
 }
 
-impl LinkedinSession {
+impl LinkedinClient {
     const LINKEDIN_URL: &'static str = "https://www.linkedin.com";
     const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
     const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
-
-    pub fn is_auth(&self) -> bool {
-        self.is_auth
-    }
-    //TODO This should be a static place in the memory. Shouldn't be created every time
+    const COOKIE_FOLDER: &'static str = "cookies/";
 
     fn create_default_headers(csrf_token: Option<&str>) -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -56,7 +52,7 @@ impl LinkedinSession {
         }
         headers
     }
-    async fn obtain_session_id(&mut self) -> CrawlerResult<()> {
+    pub async fn obtain_session_id(&self) -> CrawlerResult<(String)> {
         let auth_url = format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate");
         let default_headers = Self::create_default_headers(None);
 
@@ -85,16 +81,37 @@ impl LinkedinSession {
 
         let cookie_raw = session_id_cookie.value();
         debug!("{}", cookie_raw);
-        self.session_id = cookie_raw.replace("\"", "").to_string();
-        Ok(())
+        let session_id = cookie_raw.replace("\"", "").to_string();
+        Ok(session_id)
     }
-    pub async fn authenticate(&mut self, username: &str, password: &str) -> CrawlerResult<()> {
+    pub async fn authenticate(&mut self, username: &str, password: &str, ignore_cookies: bool) -> CrawlerResult<()> {
+        let cookie_path = format!("{}{}", Self::COOKIE_FOLDER, username);
+        if !ignore_cookies {
+            match load_cookies(cookie_path.as_str()) {
+                Some(cookies) => {
+                    let mut cookies_guard = self.cookie_store.lock().unwrap();
+                    let cookies_store = cookies_guard.deref_mut();
+                    match Self::parse_cookies(cookies_store, cookies) {
+                        Ok(session_id) => {
+                            info!("Found cookies for {}, using them", username);
+                            self.session_id = Some(session_id);
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            error!("{}", e);
+                        }
+                    }
+                }
+                _ => {}
+            };
+        }
+
         info!("Authenticating and generating cookies...");
-        self.obtain_session_id().await?;
+        let session_id = self.obtain_session_id().await?;
         info!("Obtained session id");
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let headers = Self::create_default_headers(Some(&self.session_id));
-        let formatted_session_id = format!("\"{}\"", self.session_id);
+        let headers = Self::create_default_headers(Some(session_id.as_str()));
+        let formatted_session_id = format!("\"{}\"", session_id);
         let form = vec![
             ("session_key", username),
             ("session_password", password),
@@ -136,19 +153,24 @@ impl LinkedinSession {
             )));
         }
         info!("Authenticated successfully");
+        self.session_id = Some(session_id);
         let url = Url::parse(Self::LINKEDIN_URL).unwrap();
         let cookies = self.cookie_store.cookies(&url).unwrap();
         let bytes = cookies.as_bytes();
-        save_cookies(bytes);
-        info!("Wrote cookies");
+        save_cookies(bytes, cookie_path.as_str())?;
         tokio::time::sleep(Duration::from_secs(1)).await;
         Ok(())
     }
 
     pub async fn profile(&self, profile_id: &str) -> CrawlerResult<Profile> {
         info!("Getting profile {}", profile_id);
+        let session_id = match self.session_id.as_ref() {
+            Some(id) => id,
+            None => return Err(SessionError("Session is not initialized".to_string())),
+        };
+
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
-        let headers = Self::create_default_headers(Some(&self.session_id));
+        let headers = Self::create_default_headers(Some(session_id.as_str()));
         let profile = match self.client.get(endpoint).headers(headers).send().await {
             Ok(response) => {
                 if !response.status().is_success() {
@@ -166,6 +188,11 @@ impl LinkedinSession {
     }
 
     pub async fn search_people(&self, mut params: SearchParams) -> CrawlerResult<SearchResult> {
+        let session_id = match self.session_id.as_ref() {
+            Some(session_id) => session_id,
+            None => return Err(SessionError("No session id found".to_string())),
+        };
+
         if params.page > params.end {
             return Err(SessionError("Start page cannot be greater than end page".to_string()));
         }
@@ -226,7 +253,7 @@ impl LinkedinSession {
                 keywords,
                 filter_params
             );
-            let headers = Self::create_default_headers(Some(&self.session_id));
+            let headers = Self::create_default_headers(Some(session_id.as_str()));
 
             let response = match self.client.get(endpoint).headers(headers).send().await {
                 Ok(response) => match response.json::<SearchResult>().await {
@@ -252,8 +279,13 @@ impl LinkedinSession {
     }
 
     pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {
+        let session_id = match self.session_id.as_ref() {
+            Some(session_id) => session_id,
+            None => return Err(SessionError("No session id found".to_string())),
+        };
+
         let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::API_URL, profile_id);
-        let headers = Self::create_default_headers(Some(&self.session_id));
+        let headers = Self::create_default_headers(Some(session_id.as_ref()));
         let skills = match self.client.get(endpoint).headers(headers).send().await {
             Ok(response) => match response.json::<SkillView>().await {
                 Ok(skills) => skills,
@@ -264,35 +296,30 @@ impl LinkedinSession {
         Ok(skills)
     }
 
-    /// TODO Optimize string usage here. Maybe just a slice is needed for session_id instead of a copy
-    pub fn new() -> LinkedinSession {
-        let mut cookie_store = CookieStore::new(None);
-        let mut session_id = "".to_string();
-        let mut is_auth = false;
+    fn parse_cookies(cookie_store: &mut CookieStore, cookies: String) -> CrawlerResult<String> {
         let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
-
-        if let Some(cookies) = load_cookies() {
+        {
             let cookie_list = cookies.split(";").collect::<Vec<&str>>();
             for cookie in cookie_list {
                 if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {
                     error!("Failed to parse cookie {}", code);
                 }
             }
-        };
-        if let Some(cookie_session_id) = cookie_store.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
-            let session_id_raw = cookie_session_id.value().to_string();
-            session_id = session_id_raw.replace("\"", "");
-            is_auth = true;
+
+            match cookie_store.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
+                Some(cookies) => Ok(cookies.value().to_string().replace("\"", "")),
+                None => Err(SessionError("Failed to find JSESSIONID".to_string())),
+            }
         }
+    }
+    pub fn new_proxy(endpoint: &str, username: &str, password: &str) -> LinkedinClient {
+        let cookie_store = CookieStore::new(None);
+
         let cookie_store = CookieStoreMutex::new(cookie_store);
         let cookie_store = Arc::new(cookie_store);
-        let https_proxy = Proxy::https("ddc.oxylabs.io:8001")
-            .unwrap()
-            .basic_auth("sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
 
-        let http_proxy = Proxy::http("ddc.oxylabs.io:8001")
-            .unwrap()
-            .basic_auth("sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+        let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
+        let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
         let client = fatal_unwrap_e!(
             Client::builder()
@@ -300,15 +327,29 @@ impl LinkedinSession {
                 .cookie_provider(cookie_store.clone())
                 .proxy(https_proxy)
                 .proxy(http_proxy)
-                .connection_verbose(true)
                 .build(),
             "Failed to create client {}"
         );
         Self {
-            session_id,
+            session_id: None,
             client,
             cookie_store,
-            is_auth,
+        }
+    }
+
+    pub fn new() -> LinkedinClient {
+        let cookie_store = CookieStore::new(None);
+        let cookie_store = CookieStoreMutex::new(cookie_store);
+        let cookie_store = Arc::new(cookie_store);
+
+        let client = fatal_unwrap_e!(
+            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            "Failed to create client {}"
+        );
+        Self {
+            session_id: None,
+            client,
+            cookie_store,
         }
     }
 }

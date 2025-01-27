@@ -8,6 +8,7 @@ pub enum CrawlerError {
     LinkedinError(String),
     BusError(String),
     QueueError(String),
+    FileError(String),
 }
 
 impl Display for CrawlerError {
@@ -20,6 +21,7 @@ impl Display for CrawlerError {
             CrawlerError::BusError(e) => write!(f, "BusError {}", e),
             CrawlerError::QueueError(e) => write!(f, "QueueError {}", e),
             CrawlerError::LinkedinError(e) => write!(f, "LinkedinError {}", e),
+            CrawlerError::FileError(e) => write!(f, "FileError {}", e),
         }
     }
 }

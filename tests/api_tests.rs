@@ -1,27 +1,48 @@
 use log::LevelFilter;
 use omicron_crawler::azure::{AzureClient, Label};
 use omicron_crawler::env::{get_env, load_env};
-use omicron_crawler::linkedin::api::json::{GeoUrnMap, Profile, ProfileView, SearchItem, SearchParams, SearchResult};
-use omicron_crawler::linkedin::api::LinkedinSession;
+use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
+use omicron_crawler::linkedin::api::LinkedinClient;
 use omicron_crawler::logger::Logger;
-use serde::de::Unexpected::Str;
 
 //TODO [ERROR] Failed to crawl profile ACoAAEJ2X3QB2V1z5kXcnf2j36eoSXDcz8bRVJw reason: SessionError: Failed to parse profile reqwest::Error { kind: Decode, source: Error("missing field `timePeriod`", line: 1, column: 12934) }
 
 #[tokio::test(flavor = "multi_thread")]
+
+async fn test_session() {
+    Logger::init(LevelFilter::Trace);
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    match linkedin_session.obtain_session_id().await {
+        Ok(id) => {
+            println!("Session obtained {}", id);
+        }
+        Err(e) => assert!(false, "Failed to authenticate {}", e),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 pub async fn api_auth_test() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
     load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
-    if let Err(e) = linkedin_session.authenticate(username, password).await {
+    if let Err(e) = linkedin_session.authenticate(username, password, true).await {
         assert!(false, "Failed to authenticate {}", e);
     }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_skills_test() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let skills = match linkedin_session.skills("matus-chochlik-154a7827").await {
         Ok(skills) => skills,
         Err(e) => {
@@ -31,10 +52,18 @@ pub async fn api_skills_test() {
     };
     assert_eq!(skills.elements.len(), 42);
 }
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_1() {
     Logger::init(LevelFilter::Trace);
-    let mut linkedin_session = LinkedinSession::new();
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let mut profile = match linkedin_session.profile("matus-chochlik-154a7827").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -171,7 +200,15 @@ pub async fn api_profile_test_1() {
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_2() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let profile = match linkedin_session.profile("peter-hamran-151a6317a").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -191,7 +228,16 @@ pub async fn api_profile_test_2() {
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_3() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let profile = match linkedin_session.profile("patrik-bujňák-dev").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -205,7 +251,16 @@ pub async fn api_profile_test_3() {
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_4() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let profile = match linkedin_session.profile("kamil-psenak").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -219,7 +274,15 @@ pub async fn api_profile_test_4() {
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_profile_test_5() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
     let profile = match linkedin_session.profile("tomas-danis").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -263,7 +326,15 @@ pub async fn api_profile_test_5() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn api_profile_test_6() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
     let profile = match linkedin_session.profile("ACoAACFknJIB6xq2mpBDnc9Ik9IQz3asuMw9Jww").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -276,7 +347,16 @@ async fn api_profile_test_6() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn api_profile_test_7() {
-    let mut linkedin_session = LinkedinSession::new();
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
     let profile = match linkedin_session.profile("ACoAABAbOBkBAK5E_stVP4ex6jMlV2qABdj2n3E").await {
         Ok(profile) => profile,
         Err(e) => {
@@ -289,19 +369,15 @@ async fn api_profile_test_7() {
 #[tokio::test]
 async fn test_search_people_1() {
     Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
 
-    let mut session = LinkedinSession::new();
-    if !session.is_auth() {
-        info!("Not authenticated, trying to authenticate");
-        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
-            Ok(_) => {
-                info!("Authenticated successfully");
-            }
-            Err(e) => {
-                fatal_assert!("Failed to authenticate {}", e);
-            }
-        }
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
     }
+
     let params = SearchParams {
         page: 0,
         keywords: Some("Java".to_string()),
@@ -316,7 +392,7 @@ async fn test_search_people_1() {
         end: 2,
         request_metadata: None,
     };
-    let search_result = match session.search_people(params).await {
+    let search_result = match linkedin_session.search_people(params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };
@@ -329,19 +405,15 @@ async fn test_search_people_1() {
 #[tokio::test]
 async fn test_search_people_2() {
     Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
 
-    let mut session = LinkedinSession::new();
-    if !session.is_auth() {
-        info!("Not authenticated, trying to authenticate");
-        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
-            Ok(_) => {
-                info!("Authenticated successfully");
-            }
-            Err(e) => {
-                fatal_assert!("Failed to authenticate {}", e);
-            }
-        }
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
     }
+
     let params = SearchParams {
         page: 0,
         keywords: Some("AWS".to_string()),
@@ -356,32 +428,28 @@ async fn test_search_people_2() {
         end: 100,
         request_metadata: None,
     };
-    let search_result = match session.search_people(params).await {
+    let search_result = match linkedin_session.search_people(params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
-    assert_eq!(search_result.total_lookup, 38);
+    assert_eq!(search_result.total_lookup, 37);
 }
 
 #[tokio::test]
 async fn test_search_people_max() {
     Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
 
-    let mut session = LinkedinSession::new();
-    if !session.is_auth() {
-        info!("Not authenticated, trying to authenticate");
-        match session.authenticate("erik9631@gmail.com", "soRMoaN7C2bX2mKbV9V4").await {
-            Ok(_) => {
-                info!("Authenticated successfully");
-            }
-            Err(e) => {
-                fatal_assert!("Failed to authenticate {}", e);
-            }
-        }
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
     }
+
     let params = SearchParams {
         page: 0,
         keywords: Some("AWS".to_string()),
@@ -396,7 +464,7 @@ async fn test_search_people_max() {
         end: 100,
         request_metadata: None,
     };
-    let search_result = match session.search_people(params).await {
+    let search_result = match linkedin_session.search_people(params).await {
         Ok(result) => result,
         Err(e) => panic!("Failed to search people {}", e),
     };

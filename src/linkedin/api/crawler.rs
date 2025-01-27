@@ -2,27 +2,24 @@ use crate::azure::json::{CrawledProfiles, ProfileIds};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
 use crate::linkedin::api::rate_limits::RateLimiter;
-use crate::linkedin::api::LinkedinSession;
+use crate::linkedin::api::LinkedinClient;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 
 pub struct Crawler {
-    linked_in_session: LinkedinSession,
+    linked_in_session: LinkedinClient,
     rate_limits: RateLimiter,
 }
 
 impl Crawler {
     pub async fn new(rate_limits: RateLimiter, username: &str, password: &str) -> Self {
-        let mut linked_in_session = LinkedinSession::new();
-        if !linked_in_session.is_auth {
-            match linked_in_session.authenticate(username, password).await {
-                Ok(_) => {}
-                Err(e) => panic!("Failed to authenticate {}", e),
-            }
+        let mut linked_in_session = LinkedinClient::new();
+        if let Err(e) = linked_in_session.authenticate(username, password, false).await {
+            fatal_assert!("Failed to authenticate {}", e);
         }
         Self {
-            linked_in_session: LinkedinSession::new(),
+            linked_in_session: LinkedinClient::new(),
             rate_limits,
         }
     }

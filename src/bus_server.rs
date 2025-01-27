@@ -7,7 +7,7 @@ use omicron_crawler::errors::CrawlerResult;
 use omicron_crawler::linkedin::api::crawler::Crawler;
 use omicron_crawler::linkedin::api::json::{SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::rate_limits::RateLimiter;
-use omicron_crawler::linkedin::api::LinkedinSession;
+use omicron_crawler::linkedin::api::LinkedinClient;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::{fatal_assert, fatal_unwrap, fatal_unwrap_e};
 use std::collections::VecDeque;
