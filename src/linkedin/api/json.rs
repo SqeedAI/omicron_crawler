@@ -487,6 +487,12 @@ where
         pub summary: Option<Summary>,
         pub navigation_url: String,
         pub entity_urn: String,
+        pub entity_custom_tracking_info: TrackingInfo,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all(deserialize = "camelCase"))]
+    struct TrackingInfo {
+        pub member_distance: String,
     }
     #[derive(serde::Deserialize)]
     struct Title {
@@ -510,6 +516,10 @@ where
             Some(entity_result) => entity_result,
             None => return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity")),
         };
+
+        if entity_result.entity_custom_tracking_info.member_distance == "OUT_OF_NETWORK" {
+            continue;
+        }
 
         let mut name_split = entity_result.title.text.split(" ");
         let first_name = name_split.next().unwrap().to_string();
