@@ -8,4 +8,5 @@ pub mod env;
 pub mod errors;
 pub mod linkedin;
 pub mod logger;
+pub mod session_pool;
 pub mod utils;

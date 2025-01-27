@@ -1,5 +1,8 @@
 use crate::driver::traits::BrowserConfig;
+use crate::errors::CrawlerError::SessionError;
+use crate::errors::CrawlerResult;
 use crate::linkedin::web_driver::sales_crawler::SalesCrawler;
+use crate::session_pool::traits::Session;
 use crate::utils::generate_random_string;
 use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
@@ -45,17 +48,16 @@ impl DriverSession {
         }
         Err(WebDriverError::Timeout("element not found. Timed out!".to_string()))
     }
+}
 
-    pub async fn quit(self) -> WebDriverResult<()> {
+impl Session for DriverSession {
+    async fn quit(self) -> CrawlerResult<()> {
         match self.driver.quit().await {
             Ok(_) => {
                 info!("Quitting session");
                 Ok(())
             }
-            Err(e) => {
-                error!("Failed to quit the WebDriver: {}", e);
-                Err(e)
-            }
+            Err(e) => Err(SessionError(format!("Failed to quit the WebDriver: {}", e))),
         }
     }
 }

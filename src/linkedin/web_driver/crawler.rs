@@ -1,4 +1,4 @@
-use crate::driver::session_manager::SessionProxy;
+use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::web_driver::linkedin::{
@@ -6,15 +6,16 @@ use crate::linkedin::web_driver::linkedin::{
     search_set_past_company, search_set_services, try_press_filter_button,
 };
 use crate::linkedin::web_driver::profiles::{Profile, SearchResult};
+use crate::session_pool::SessionProxy;
 use std::time::Duration;
 use thirtyfour::By;
 
 pub struct Crawler<'a> {
-    pub proxy: SessionProxy<'a>,
+    pub proxy: SessionProxy<'a, DriverSession>,
 }
 
 impl<'a> Crawler<'a> {
-    pub async fn new(proxy: SessionProxy<'a>) -> Self {
+    pub async fn new(proxy: SessionProxy<'a, DriverSession>) -> Self {
         Self { proxy }
     }
 

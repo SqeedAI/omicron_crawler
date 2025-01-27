@@ -1,18 +1,19 @@
-use crate::driver::session_manager::SessionProxy;
+use crate::driver::session::DriverSession;
 use crate::errors::CrawlerError::DriverError;
 use crate::errors::CrawlerResult;
 use crate::linkedin::web_driver::profiles::{Profile, SearchResult};
 use crate::linkedin::web_driver::sales::{
     parse_sales_profile, parse_search, send_message, set_function_search, set_geography_search, set_job_title_search, set_keyword_search,
 };
+use crate::session_pool::SessionProxy;
 use std::time::Duration;
 
 pub struct SalesCrawler<'a> {
-    pub proxy: SessionProxy<'a>,
+    pub proxy: SessionProxy<'a, DriverSession>,
 }
 
 impl<'a> SalesCrawler<'a> {
-    pub async fn new(proxy: SessionProxy<'a>) -> Self {
+    pub async fn new(proxy: SessionProxy<'a, DriverSession>) -> Self {
         Self { proxy }
     }
     pub async fn set_search_filters(
