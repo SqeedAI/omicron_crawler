@@ -114,7 +114,11 @@ impl LinkedinSession {
         };
 
         if !response.status().is_success() {
-            return Err(SessionError(format!("Failed to authenticate {}", response.status())));
+            return Err(SessionError(format!(
+                "Failed to authenticate {} {}",
+                response.status(),
+                response.text().await.unwrap()
+            )));
         }
 
         let response_data = match response.json::<AuthenticateResponse>().await {
