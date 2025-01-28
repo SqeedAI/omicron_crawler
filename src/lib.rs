@@ -10,3 +10,5 @@ pub mod linkedin;
 pub mod logger;
 pub mod session_pool;
 pub mod utils;
+
+pub mod config;

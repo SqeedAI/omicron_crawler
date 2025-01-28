@@ -5,6 +5,7 @@ pub enum CrawlerError {
     InteractionError(String),
     DriverError(String),
     SessionError(String),
+    NoFreeSession(String),
     LinkedinError(String),
     BusError(String),
     QueueError(String),
@@ -22,6 +23,7 @@ impl Display for CrawlerError {
             CrawlerError::QueueError(e) => write!(f, "QueueError {}", e),
             CrawlerError::LinkedinError(e) => write!(f, "LinkedinError {}", e),
             CrawlerError::FileError(e) => write!(f, "FileError {}", e),
+            CrawlerError::NoFreeSession(e) => write!(f, "NoFreeSession {}", e),
         }
     }
 }

@@ -7,6 +7,7 @@ use crate::errors::CrawlerError::{LinkedinError, SessionError};
 use crate::errors::CrawlerResult;
 use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
 use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
+use crate::session_pool::traits::Session;
 use actix_web::cookie::CookieJar;
 use actix_web::web::Json;
 use chrono::format;
@@ -353,5 +354,11 @@ impl LinkedinClient {
             client,
             cookie_store,
         }
+    }
+}
+
+impl Session for LinkedinClient {
+    async fn quit(&mut self) -> CrawlerResult<()> {
+        Ok(())
     }
 }

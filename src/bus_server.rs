@@ -4,7 +4,7 @@ use omicron_crawler::azure::json::{CrawledProfiles, ProfileIds};
 use omicron_crawler::azure::{AzureClient, Label};
 use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::errors::CrawlerResult;
-use omicron_crawler::linkedin::api::crawler::Crawler;
+use omicron_crawler::linkedin::api::crawler::LinkedinSessionManager;
 use omicron_crawler::linkedin::api::json::{SearchParams, SearchResult};
 use omicron_crawler::linkedin::api::rate_limits::RateLimiter;
 use omicron_crawler::linkedin::api::LinkedinClient;
@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
 
-async fn obtain_profiles(params: SearchParams, crawler: &Crawler, azure_client: Arc<AzureClient>) {
+async fn obtain_profiles(params: SearchParams, crawler: &LinkedinSessionManager, azure_client: Arc<AzureClient>) {
     let profiles = match crawler.search_people(params).await {
         Ok(profiles) => profiles,
         Err(e) => {
@@ -33,14 +33,14 @@ async fn obtain_profiles(params: SearchParams, crawler: &Crawler, azure_client: 
     });
 }
 
-async fn crawl_profile(mut ids: ProfileIds, crawler: &mut Crawler, azure_client: Arc<AzureClient>) {
+async fn crawl_profile(mut ids: ProfileIds, crawler: &mut LinkedinSessionManager, azure_client: Arc<AzureClient>) {
     info!("Crawling {} profiles", ids.ids.len());
     const PROFILES_PER_REQUEST: usize = 10;
     let chunks = ids.ids.chunks(PROFILES_PER_REQUEST);
     let request_metadata = ids.request_metadata.take();
     let mut current_profile = 0;
     for chunk in chunks {
-        let crawled_profiles = match crawler.profiles(chunk, Some(&SHUTDOWN_SIGNAL)).await {
+        let crawled_profiles = match crawler.profiles(chunk.to_vec(), Some(&SHUTDOWN_SIGNAL)).await {
             Ok(profiles) => profiles,
             Err(e) => {
                 error!("Failed to crawl profiles {}", e);
@@ -89,7 +89,15 @@ async fn main() -> std::io::Result<()> {
     Logger::init(env.log_level);
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
-    let mut crawler = Crawler::new(RateLimiter::new(100, 800), username, password).await;
+    let config_path = "config/proxies.yaml";
+    let mut crawler = match LinkedinSessionManager::new(RateLimiter::new(100, 800), config_path).await {
+        Ok(crawler_result) => crawler_result,
+        Err(e) => {
+            error!("{}", e);
+            return Ok(());
+        }
+    };
+
     let azure_client = Arc::new(AzureClient::new().await);
 
     // Spawn CTRL+C handler task
