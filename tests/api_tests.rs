@@ -380,42 +380,6 @@ async fn test_search_people_1() {
 
     let params = SearchParams {
         page: 0,
-        keywords: Some("Java".to_string()),
-        keyword_first_name: Some("Tomas".to_string()),
-        keyword_last_name: None,
-        keyword_title: None,
-        keyword_company: None,
-        keyword_school: None,
-        countries: Some(vec![GeoUrnMap::Slovakia]),
-        profile_language: None,
-        network_depth: None,
-        end: 2,
-        request_metadata: None,
-    };
-    let search_result = match linkedin_session.search_people(params).await {
-        Ok(result) => result,
-        Err(e) => panic!("Failed to search people {}", e),
-    };
-
-    assert!(search_result.total > 0);
-    assert!(search_result.elements.len() > 0);
-    assert_eq!(search_result.total_lookup, 20);
-}
-
-#[tokio::test]
-async fn test_search_people_2() {
-    Logger::init(LevelFilter::Trace);
-    load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
-    let username = get_env().await.linkedin_username.as_str();
-    let password = get_env().await.linkedin_password.as_str();
-
-    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
-        assert!(false, "Failed to authenticate {}", e);
-    }
-
-    let params = SearchParams {
-        page: 0,
         keywords: Some("AWS".to_string()),
         keyword_first_name: Some("Alexandra".to_string()),
         keyword_last_name: None,
@@ -443,7 +407,7 @@ async fn test_search_people_2() {
 }
 
 #[tokio::test]
-async fn test_search_people_3() {
+async fn test_search_people_2() {
     Logger::init(LevelFilter::Trace);
     load_env();
     let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
@@ -479,6 +443,46 @@ async fn test_search_people_3() {
 
     assert!(search_result.total > 0);
     assert_eq!(search_result.elements.len(), 1);
+}
+
+#[tokio::test]
+async fn test_search_people_3() {
+    Logger::init(LevelFilter::Trace);
+    load_env();
+    let mut linkedin_session = LinkedinClient::new();
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let username = get_env().await.linkedin_username.as_str();
+    let password = get_env().await.linkedin_password.as_str();
+
+    if let Err(e) = linkedin_session.authenticate(username, password, false).await {
+        assert!(false, "Failed to authenticate {}", e);
+    }
+
+    let params = SearchParams {
+        page: 0,
+        keywords: Some("Java,C++".to_string()),
+        keyword_first_name: Some("Dušan".to_string()),
+        keyword_last_name: None,
+        keyword_title: None,
+        keyword_company: None,
+        keyword_school: None,
+        countries: Some(vec![GeoUrnMap::Slovakia, GeoUrnMap::Czechia]),
+        profile_language: None,
+        network_depth: None,
+        end: 1,
+        request_metadata: None,
+    };
+    let search_result = match linkedin_session.search_people(params).await {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to search people {}", e),
+    };
+
+    for i in search_result.elements.iter() {
+        println!("{}\nhttps://www.linkedin.com/in/{}\n\n", i.url, i.profile_urn)
+    }
+
+    assert!(search_result.total > 0);
+    assert!(search_result.elements.len() > 0);
 }
 
 #[tokio::test]

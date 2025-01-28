@@ -4,7 +4,7 @@ meta {
   seq: 9
 }
 
-post {
+get {
   url: https://www.linkedin.com/checkpoint/lg/direct-login-submit?addDetailedLoginResult=add&dropLiatCookie=drop&csrfToken=ajax%3A0869619141083814882&pSIdString=1f399d33-b432-4548-91cc-b21ad98758f1&ut=0iUcBCdG9i_rA1
   body: json
   auth: none
@@ -24,4 +24,10 @@ headers {
   X-User-Language: en
   X-User-Locale: en_US
   Accept-Language: en-us
+}
+
+body:json {
+  {
+    "challenge_url":"https://www.linkedin.com/checkpoint/lg/direct-login-submit?addDetailedLoginResult=add&dropLiatCookie=drop&csrfToken=ajax%3A7113521399838807246&pSIdString=a952b390-04d0-4df8-ba4a-baf1af627b7f&ut=0NqjOdPcSK0HE1"
+  }
 }

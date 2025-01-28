@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{LINKEDIN_URL}}{{API_URL}}/graphql?variables=(start:{{PAGE}},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{{KEYWORDS}},flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0
+  url: {{LINKEDIN_URL}}{{API_URL}}/graphql?variables=(start:{{PAGE}},origin:GLOBAL_SEARCH_HEADER,query:(keywords:Java%2CC++,flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0
   body: none
   auth: none
 }
 
 params:query {
-  variables: (start:{{PAGE}},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{{KEYWORDS}},flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))
+  variables: (start:{{PAGE}},origin:GLOBAL_SEARCH_HEADER,query:(keywords:Java,C  ,flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))
   queryId: voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0
 }
 
@@ -28,9 +28,4 @@ headers {
 script:pre-request {
   const cookies = bru.getEnvVar('cookies');
   req.headers.Cookie = cookies;
-}
-
-script:post-response {
-  const body = res.body;
-  console.log(body.data.searchDashClustersByAll.elements[0].items.length)
 }
