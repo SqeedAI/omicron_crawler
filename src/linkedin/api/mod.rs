@@ -22,6 +22,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
+use urlencoding::encode;
 
 pub struct LinkedinSession {
     session_id: String,
@@ -217,12 +218,13 @@ impl LinkedinSession {
             total_lookup: 0,
         };
         info!("searching {} from total {}", current_offset, total_offset);
+        let encoded_keywords = encode(&keywords);
         while current_offset < total_offset {
             let endpoint = format!(
                 "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
                 Self::API_URL,
                 current_offset,
-                keywords,
+                encoded_keywords,
                 filter_params
             );
             let headers = Self::create_default_headers(Some(&self.session_id));
