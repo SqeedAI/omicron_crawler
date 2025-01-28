@@ -11,7 +11,7 @@ use omicron_crawler::logger::Logger;
 
 async fn test_session() {
     Logger::init(LevelFilter::Trace);
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     match linkedin_session.obtain_session_id().await {
         Ok(id) => {
             println!("Session obtained {}", id);
@@ -24,7 +24,7 @@ async fn test_session() {
 pub async fn api_auth_test() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     if let Err(e) = linkedin_session.authenticate(username, password, true).await {
@@ -36,7 +36,7 @@ pub async fn api_auth_test() {
 pub async fn api_skills_test() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     if let Err(e) = linkedin_session.authenticate(username, password, false).await {
@@ -57,7 +57,7 @@ pub async fn api_skills_test() {
 pub async fn api_profile_test_1() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     if let Err(e) = linkedin_session.authenticate(username, password, false).await {
@@ -202,7 +202,7 @@ pub async fn api_profile_test_1() {
 pub async fn api_profile_test_2() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     if let Err(e) = linkedin_session.authenticate(username, password, false).await {
@@ -253,7 +253,7 @@ pub async fn api_profile_test_3() {
 pub async fn api_profile_test_4() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -328,7 +328,7 @@ pub async fn api_profile_test_5() {
 async fn api_profile_test_6() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -349,7 +349,7 @@ async fn api_profile_test_6() {
 async fn api_profile_test_7() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -370,7 +370,7 @@ async fn api_profile_test_7() {
 async fn test_search_people_1() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -410,7 +410,7 @@ async fn test_search_people_1() {
 async fn test_search_people_2() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -449,8 +449,7 @@ async fn test_search_people_2() {
 async fn test_search_people_3() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 
@@ -489,7 +488,7 @@ async fn test_search_people_3() {
 async fn test_search_people_max() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8001", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
 

@@ -10,7 +10,7 @@
     "enabled": true,
     "protocol": "http",
     "hostname": "ddc.oxylabs.io",
-    "port": 8001,
+    "port": 8002,
     "auth": {
       "enabled": true,
       "username": "sqeed_i0J4T",
