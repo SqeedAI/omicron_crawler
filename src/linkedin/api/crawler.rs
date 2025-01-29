@@ -2,8 +2,8 @@ use crate::azure::json::{CrawledProfiles, ProfileIds};
 use crate::config::Config;
 use crate::errors::CrawlerError::{NoFreeSession, SessionError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::crawler::Commands::Profile;
-use crate::linkedin::api::json::{SearchParams, SearchResult};
+use crate::linkedin::api::crawler::Commands::ProfileReady;
+use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
 use crate::linkedin::api::rate_limits::RateLimiter;
 use crate::linkedin::api::LinkedinClient;
 use crate::session_pool::{SessionPool, SessionProxy};
@@ -12,6 +12,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
 pub struct LinkedinSessionManager {
@@ -19,11 +20,11 @@ pub struct LinkedinSessionManager {
     rate_limits: RateLimiter,
 }
 
-enum Commands {
-    Search(CrawlerResult<SearchResult>),
-    Profile(CrawlerResult<Profile>),
-    EndProfile,
-    EndSearch,
+pub enum Commands {
+    SearchReady(CrawlerResult<SearchResult>),
+    ProfileReady(CrawlerResult<Profile>),
+    ProfileUnparsed(String),
+    End,
 }
 
 impl LinkedinSessionManager {
@@ -76,12 +77,12 @@ impl LinkedinSessionManager {
     }
 
     /// Searches are generally fast so no need to split
-    pub async fn search_people(&self, params: SearchParams, tx: Sender<Commands>) {
+    pub async fn search_people_stream(&self, params: SearchParams, tx: UnboundedSender<Commands>) {
         let session = Self::busy_acquire_session(&self.session_pool).await;
         let linked_in_session = session.session.unwrap();
         tokio::task::spawn(async move {
             let result = linked_in_session.search_people(params).await;
-            if let Err(e) = tx.send(Commands::Search(result)) {
+            if let Err(e) = tx.send(Commands::SearchReady(result)) {
                 error!("search send error {}", e);
             }
         });
@@ -89,19 +90,19 @@ impl LinkedinSessionManager {
 
     ///TODO Using channels is not efficient because of constant cache sync
     /// This is an MPSC case, so ArrayQueue would be better, but we have no way to yield from tasks with tokio.
-    pub async fn profiles(&self, ids: Vec<String>, interrupt_signal: Option<&AtomicBool>, tx: Sender<Commands>) {
+    pub fn profiles_stream(&self, ids: ProfileIds, interrupt_signal: Option<&AtomicBool>, tx: UnboundedSender<Commands>) {
         /// TODO Large overhead. Consider batching
         let rate_limiter = &self.rate_limits;
         let pool = self.session_pool.clone();
         tokio::task::spawn(async move {
-            for i in ids.iter() {
+            for i in ids.ids.iter() {
                 let session = Self::busy_acquire_session(pool.as_ref()).await;
                 tokio::task::spawn(async move {
                     let client = session.session.as_ref().unwrap();
                     let profile = match client.profile(i.as_str()).await {
                         Ok(profile) => profile,
                         Err(e) => {
-                            if let Err(e) = tx.send(Profile(Err(e))) {
+                            if let Err(e) = tx.send(ProfileReady(Err(e))) {
                                 error!("{}", e)
                             }
                             continue;
@@ -110,7 +111,7 @@ impl LinkedinSessionManager {
                     let skills = match client.skills(i.as_str()).await {
                         Ok(skills) => skills,
                         Err(e) => {
-                            if let Err(e) = tx.send(Profile(Err(e))) {
+                            if let Err(e) = tx.send(ProfileReady(Err(e))) {
                                 error!("{}", e)
                             }
                             continue;
@@ -119,7 +120,7 @@ impl LinkedinSessionManager {
 
                     let mut profile = profile;
                     profile.skill_view = skills;
-                    if let Err(e) = tx.send(Profile(Ok(profile))) {
+                    if let Err(e) = tx.send(ProfileReady(Ok(profile))) {
                         error!("{}", e);
                     }
                     let wait_time = rate_limiter.next().unwrap();

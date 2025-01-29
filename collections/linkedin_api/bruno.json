@@ -8,13 +8,13 @@
   ],
   "proxy": {
     "enabled": true,
-    "protocol": "http",
-    "hostname": "ddc.oxylabs.io",
-    "port": 8002,
+    "protocol": "https",
+    "hostname": "pr.oxylabs.io",
+    "port": 7777,
     "auth": {
       "enabled": true,
-      "username": "sqeed_i0J4T",
-      "password": "fqXJbuiUEHaXyFd6DCQZ_+"
+      "username": "customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0624742940-sesstime-30",
+      "password": "TWSIZxrjcUPBowSrGqz_C1"
     },
     "bypassProxy": ""
   }

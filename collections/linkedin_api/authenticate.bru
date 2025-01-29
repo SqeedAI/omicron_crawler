@@ -45,8 +45,8 @@ script:post-response {
     console.log("No cookies found");
     return;
   }
-  //const session_entry = cookies[5];
-  // const JSESSIONID = session_entry.match(/JSESSIONID=(.*?);/)[1].replace(/"/g, '');
-  // bru.setEnvVar('JSESSIONID', JSESSIONID);
+  const session_entry = cookies[5];
+  const JSESSIONID = session_entry.match(/JSESSIONID=(.*?);/)[1].replace(/"/g, '');
+  bru.setEnvVar('JSESSIONID', JSESSIONID);
   bru.setEnvVar('cookies', cookies);
 }

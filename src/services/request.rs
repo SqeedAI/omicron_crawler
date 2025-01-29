@@ -9,7 +9,7 @@ use omicron_crawler::linkedin::api::json::SearchParams;
 pub async fn search(search_params: Json<SearchParams>) -> HttpResponse {
     let crawler = get_crawler().await;
     let search_params = search_params.into_inner();
-    let results = match crawler.search_people(search_params).await {
+    let results = match crawler.search_people_stream(search_params).await {
         Ok(result) => result,
         Err(e) => {
             error!("Failed to perform search {}", e);
@@ -23,7 +23,7 @@ pub async fn search(search_params: Json<SearchParams>) -> HttpResponse {
 pub async fn profiles(url_requests: Json<ProfileIds>) -> HttpResponse {
     let crawler = get_crawler().await;
     let mut profiles_response = url_requests.into_inner();
-    let profiles = match crawler.profiles(profiles_response.ids.as_slice(), None).await {
+    let profiles = match crawler.profiles_stream(profiles_response.ids.as_slice(), None).await {
         Ok(profiles) => profiles,
         Err(e) => {
             error!("Failed to perform profiles {}", e);
