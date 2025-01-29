@@ -2,19 +2,28 @@ use crate::azure::json::{CrawledProfiles, ProfileIds};
 use crate::config::Config;
 use crate::errors::CrawlerError::{NoFreeSession, SessionError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
+use crate::linkedin::api::crawler::Commands::Profile;
+use crate::linkedin::api::json::{SearchParams, SearchResult};
 use crate::linkedin::api::rate_limits::RateLimiter;
 use crate::linkedin::api::LinkedinClient;
 use crate::session_pool::{SessionPool, SessionProxy};
-use crossbeam::channel::Receiver;
+use crossbeam::channel::{Receiver, Sender};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
 
 pub struct LinkedinSessionManager {
-    session_pool: SessionPool<LinkedinClient>,
+    session_pool: Arc<SessionPool<LinkedinClient>>,
     rate_limits: RateLimiter,
+}
+
+enum Commands {
+    Search(CrawlerResult<SearchResult>),
+    Profile(CrawlerResult<Profile>),
+    EndProfile,
+    EndSearch,
 }
 
 impl LinkedinSessionManager {
@@ -43,7 +52,8 @@ impl LinkedinSessionManager {
             sessions.push(linkedin_client);
         }
 
-        let session_pool = SessionPool::new(sessions);
+        let raw_session_pool = SessionPool::new(sessions);
+        let session_pool = Arc::new(raw_session_pool);
         Ok(Self { session_pool, rate_limits })
     }
 
@@ -54,9 +64,9 @@ impl LinkedinSessionManager {
         }
     }
 
-    async fn busy_acquire_session(&self) -> SessionProxy<LinkedinClient> {
+    async fn busy_acquire_session(session_pool: &SessionPool<LinkedinClient>) -> SessionProxy<LinkedinClient> {
         loop {
-            match self.session_pool.acquire() {
+            match session_pool.acquire() {
                 Some(session) => return session,
                 None => {
                     tokio::time::sleep(Duration::from_millis(1000)).await;
@@ -65,53 +75,59 @@ impl LinkedinSessionManager {
         }
     }
 
-    pub async fn search_people(&self, params: SearchParams) -> CrawlerResult<JoinHandle<CrawlerResult<SearchResult>>> {
-        let session = self.try_acquire_session().await?;
+    /// Searches are generally fast so no need to split
+    pub async fn search_people(&self, params: SearchParams, tx: Sender<Commands>) {
+        let session = Self::busy_acquire_session(&self.session_pool).await;
         let linked_in_session = session.session.unwrap();
-        let handle = tokio::task::spawn(async move {
+        tokio::task::spawn(async move {
             let result = linked_in_session.search_people(params).await;
-            result
+            if let Err(e) = tx.send(Commands::Search(result)) {
+                error!("search send error {}", e);
+            }
         });
-        Ok(handle)
     }
 
     ///TODO Using channels is not efficient because of constant cache sync
     /// This is an MPSC case, so ArrayQueue would be better, but we have no way to yield from tasks with tokio.
-    pub async fn profiles(&self, ids: Vec<String>, interrupt_signal: Option<&AtomicBool>) -> Receiver<CrawlerResult<Profile>> {
-        let (tx, rx) = crossbeam::channel::unbounded();
+    pub async fn profiles(&self, ids: Vec<String>, interrupt_signal: Option<&AtomicBool>, tx: Sender<Commands>) {
         /// TODO Large overhead. Consider batching
-        ///
         let rate_limiter = &self.rate_limits;
+        let pool = self.session_pool.clone();
         tokio::task::spawn(async move {
             for i in ids.iter() {
-                let session = self.busy_acquire_session().await;
+                let session = Self::busy_acquire_session(pool.as_ref()).await;
                 tokio::task::spawn(async move {
                     let client = session.session.as_ref().unwrap();
                     let profile = match client.profile(i.as_str()).await {
                         Ok(profile) => profile,
                         Err(e) => {
-                            tx.send(Err(e)).unwrap();
+                            if let Err(e) = tx.send(Profile(Err(e))) {
+                                error!("{}", e)
+                            }
                             continue;
                         }
                     };
                     let skills = match client.skills(i.as_str()).await {
                         Ok(skills) => skills,
                         Err(e) => {
-                            tx.send(Err(e)).unwrap();
+                            if let Err(e) = tx.send(Profile(Err(e))) {
+                                error!("{}", e)
+                            }
                             continue;
                         }
                     };
 
                     let mut profile = profile;
                     profile.skill_view = skills;
-                    tx.send(Ok(profile)).unwrap();
+                    if let Err(e) = tx.send(Profile(Ok(profile))) {
+                        error!("{}", e);
+                    }
                     let wait_time = rate_limiter.next().unwrap();
                     info!("Sleeping. Rate limit: {}", wait_time.as_secs());
                     tokio::time::sleep(wait_time).await;
                 });
             }
         });
-        rx
 
         // let linked_in_session = session.session.as_ref().unwrap();
         // let mut crawled_profiles = Vec::with_capacity(ids.len());

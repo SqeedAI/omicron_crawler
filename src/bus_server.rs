@@ -11,6 +11,7 @@ use omicron_crawler::linkedin::api::LinkedinClient;
 use omicron_crawler::logger::Logger;
 use omicron_crawler::{fatal_assert, fatal_unwrap, fatal_unwrap_e};
 use std::collections::VecDeque;
+use std::mem;
 use std::process::exit;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicU8};
@@ -36,32 +37,30 @@ async fn obtain_profiles(params: SearchParams, crawler: &LinkedinSessionManager,
 async fn crawl_profile(mut ids: ProfileIds, crawler: &mut LinkedinSessionManager, azure_client: Arc<AzureClient>) {
     info!("Crawling {} profiles", ids.ids.len());
     const PROFILES_PER_REQUEST: usize = 10;
-    let chunks = ids.ids.chunks(PROFILES_PER_REQUEST);
     let request_metadata = ids.request_metadata.take();
     let mut current_profile = 0;
-    for chunk in chunks {
-        let crawled_profiles = match crawler.profiles(chunk.to_vec(), Some(&SHUTDOWN_SIGNAL)).await {
-            Ok(profiles) => profiles,
-            Err(e) => {
-                error!("Failed to crawl profiles {}", e);
-                return;
-            }
-        };
-        current_profile += crawled_profiles.len();
-        let metadata = request_metadata.clone();
-        let azure_client_clone = azure_client.clone();
-        tokio::task::spawn(async move {
-            info!("Pushing {} profiles to manager", crawled_profiles.len());
-            let crawled_profiles = CrawledProfiles {
-                profiles: crawled_profiles,
-                request_metadata: metadata,
-            };
-            //TODO Retry in case of failure
-            azure_client_clone.push_to_manager(crawled_profiles, Label::ProfilesComplete).await
-        });
-        if SHUTDOWN_SIGNAL.load(Relaxed) == true {
-            break;
+    let (tx, rx) = crossbeam::channel::unbounded();
+    let crawled_profiles = match crawler.profiles(mem::take(&mut ids.ids), Some(&SHUTDOWN_SIGNAL), tx).await {
+        Ok(profiles) => profiles,
+        Err(e) => {
+            error!("Failed to crawl profiles {}", e);
+            return;
         }
+    };
+    current_profile += crawled_profiles.len();
+    let metadata = request_metadata.clone();
+    let azure_client_clone = azure_client.clone();
+    tokio::task::spawn(async move {
+        info!("Pushing {} profiles to manager", crawled_profiles.len());
+        let crawled_profiles = CrawledProfiles {
+            profiles: crawled_profiles,
+            request_metadata: metadata,
+        };
+        //TODO Retry in case of failure
+        azure_client_clone.push_to_manager(crawled_profiles, Label::ProfilesComplete).await
+    });
+    if SHUTDOWN_SIGNAL.load(Relaxed) == true {
+        break;
     }
 
     if SHUTDOWN_SIGNAL.load(Relaxed) == true {
