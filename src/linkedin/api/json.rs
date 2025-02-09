@@ -514,7 +514,7 @@ where
     for item_inner in items {
         let entity_result = match item_inner.item.entity_result {
             Some(entity_result) => entity_result,
-            None => return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity")),
+            None => continue,
         };
 
         if entity_result.title.text == "LinkedIn Member" {
@@ -558,6 +558,9 @@ where
             url: entity_result.navigation_url,
             profile_urn: urn.to_string(),
         });
+    }
+    if out.len() == 0 {
+        return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity"))
     }
     Ok(out)
 }

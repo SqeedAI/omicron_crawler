@@ -361,7 +361,7 @@ async fn test_search_people_2() {
 
     assert!(search_result.total > 0);
     assert!(search_result.elements.len() > 0);
-    assert_eq!(search_result.total_lookup, 38);
+    assert_eq!(search_result.total_lookup, 40);
 }
 
 #[tokio::test]
