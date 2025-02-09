@@ -87,18 +87,3 @@ Open **Internet -> AndroidWifi settings -> Edit icon top right -> Proxy Manual**
 
 Network traffic should be visible in charles now.
 
-### Api notes
-
-## JSESSIONID
-
-- The android version generates a JSESSIONID on every login. It is done by the client not by the server.
-    - Uses a SecureRandom instance to generate a random long number. Takes the absolute value of this random number
-    - If the number happens to be Long.MIN_VALUE, it's replaced with Long.MAX_VALUE
-    - Formats the number as a 19-digit string with leading zeros using String.format(Locale.US, "%019d", value)
-    - Prepends "ajax:" to the formatted number
-
-## Register flow
-
-- EMAIL, PASSWORD, FIRSTNAME, LASTNAME
-- Recent company
-- Activate mail

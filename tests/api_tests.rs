@@ -24,7 +24,11 @@ async fn test_session() {
 pub async fn api_auth_test() {
     Logger::init(LevelFilter::Trace);
     load_env();
-    let mut linkedin_session = LinkedinClient::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
+    let mut linkedin_session = LinkedinClient::new_proxy(
+        "pr.oxylabs.io:7777",
+        "customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0624742948-sesstime-3",
+        "TWSIZxrjcUPBowSrGqz_C1",
+    );
     let username = get_env().await.linkedin_username.as_str();
     let password = get_env().await.linkedin_password.as_str();
     if let Err(e) = linkedin_session.authenticate(username, password, true).await {

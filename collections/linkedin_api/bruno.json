@@ -13,9 +13,13 @@
     "port": 7777,
     "auth": {
       "enabled": true,
-      "username": "customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0624742940-sesstime-30",
+      "username": "customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0624742941-sesstime-30",
       "password": "TWSIZxrjcUPBowSrGqz_C1"
     },
     "bypassProxy": ""
+  },
+  "clientCertificates": {
+    "enabled": true,
+    "certs": []
   }
 }

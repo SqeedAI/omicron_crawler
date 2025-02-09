@@ -105,7 +105,7 @@ impl LinkedinSessionManager {
                             if let Err(e) = tx.send(ProfileReady(Err(e))) {
                                 error!("{}", e)
                             }
-                            continue;
+                            return;
                         }
                     };
                     let skills = match client.skills(i.as_str()).await {
@@ -114,7 +114,7 @@ impl LinkedinSessionManager {
                             if let Err(e) = tx.send(ProfileReady(Err(e))) {
                                 error!("{}", e)
                             }
-                            continue;
+                            return;
                         }
                     };
 
