@@ -358,7 +358,7 @@ impl LinkedinClient {
 }
 
 impl Session for LinkedinClient {
-    async fn quit(&mut self) -> CrawlerResult<()> {
+    async fn quit(self) -> CrawlerResult<()> {
         Ok(())
     }
 }
