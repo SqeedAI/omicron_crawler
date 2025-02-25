@@ -4,13 +4,14 @@ use uuid::Uuid;
 
 pub fn new_webview_tracking_headers(webview_user_agent: &str, requested_with: &str) -> HeaderMap {
     let mut header_map = HeaderMap::new();
-    header_map.insert("User-Agent", HeaderValue::from_str(webview_user_agent.as_str()));
+    header_map.insert("User-Agent", HeaderValue::from_str(webview_user_agent).unwrap());
     header_map.insert("x-requested-with", HeaderValue::from_str(requested_with).unwrap());
-    header_map.insert("sec-fetch-site", HeaderValue::from_str("none"));
-    header_map.insert("sec-fetch-mode", HeaderValue::from_str("navigate"));
-    header_map.insert("sec-fetch-user", HeaderValue::from_str("?1"));
-    header_map.insert("sec-fetch-dest", HeaderValue::from_str("document"));
-    header_map.insert("accept-language", HeaderValue::from_str("en-US,en;q=0.9"));
+    header_map.insert("sec-fetch-site", HeaderValue::from_static("none"));
+    header_map.insert("sec-fetch-mode", HeaderValue::from_static("navigate"));
+    header_map.insert("sec-fetch-user", HeaderValue::from_static("?1"));
+    header_map.insert("sec-fetch-dest", HeaderValue::from_static("document"));
+    header_map.insert("accept-language", HeaderValue::from_static("en-US,en;q=0.9"));
+    header_map
 }
 
 pub fn new_native_tracking_headers(jsessionid: &str, device_info: &DeviceInfo, user_agent: &str, li_user_agent: &str) -> HeaderMap {

@@ -107,7 +107,6 @@ impl LinkedinClient {
                     match Self::parse_cookies(cookies_store, cookies) {
                         Ok(session_id) => {
                             info!("Found cookies for {}, using them", username);
-                            self.session_id = Some(session_id);
                             return Ok(());
                         }
                         Err(e) => {
@@ -166,7 +165,6 @@ impl LinkedinClient {
             )));
         }
         info!("Authenticated successfully");
-        self.session_id = Some(session_id);
         let url = Url::parse(Self::API_DOMAIN).unwrap();
         let cookies = self.cookie_store.cookies(&url).unwrap();
         let bytes = cookies.as_bytes();
@@ -177,10 +175,7 @@ impl LinkedinClient {
 
     pub async fn profile(&self, profile_id: &str) -> CrawlerResult<Profile> {
         info!("Getting profile {}", profile_id);
-        let session_id = match self.session_id.as_ref() {
-            Some(id) => id,
-            None => return Err(SessionError("Session is not initialized".to_string())),
-        };
+        let session_id = &self.session_id;
 
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::VOYAGER_URL, profile_id);
         let headers = Self::create_default_headers(Some(session_id.as_str()));
@@ -201,10 +196,7 @@ impl LinkedinClient {
     }
 
     pub async fn search_people(&self, mut params: SearchParams) -> CrawlerResult<SearchResult> {
-        let session_id = match self.session_id.as_ref() {
-            Some(session_id) => session_id,
-            None => return Err(SessionError("No session id found".to_string())),
-        };
+        let session_id = &self.session_id;
 
         if params.page > params.end {
             return Err(SessionError("Start page cannot be greater than end page".to_string()));
@@ -293,10 +285,7 @@ impl LinkedinClient {
     }
 
     pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {
-        let session_id = match self.session_id.as_ref() {
-            Some(session_id) => session_id,
-            None => return Err(SessionError("No session id found".to_string())),
-        };
+        let session_id = &self.session_id;
 
         let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::VOYAGER_URL, profile_id);
         let headers = Self::create_default_headers(Some(session_id.as_ref()));
@@ -330,7 +319,7 @@ impl LinkedinClient {
     pub async fn tracking(&mut self) -> CrawlerResult<String> {
         let url = fatal_unwrap_e!(
             Url::parse(format!("{}/mob/tracking", Self::API_DOMAIN).as_str()),
-            "Failed to parse tracking url"
+            "Failed to parse tracking url {}"
         );
         let tracking_data = serde_json::to_string(&self.native_device_info).unwrap();
         let response = self
@@ -375,8 +364,8 @@ impl LinkedinClient {
 
     pub async fn challenge(&self, challenge: &SignupChallenge) -> CrawlerResult<String> {
         let url = fatal_unwrap_e!(
-            Url::parse(format!("{}{}", Self::API_DOMAIN.as_str(), challenge.challenge_url)),
-            "Failed to parse challenge url"
+            Url::parse(format!("{}{}", Self::API_DOMAIN, challenge.challenge_url).as_str()),
+            "Failed to parse challenge url {}"
         );
 
         let res = self
