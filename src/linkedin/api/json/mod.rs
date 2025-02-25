@@ -1,3 +1,6 @@
+pub mod request;
+pub mod response;
+
 use regex::Regex;
 use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
@@ -560,7 +563,7 @@ where
         });
     }
     if out.len() == 0 {
-        return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity"))
+        return Err(serde::de::Error::invalid_type(Unexpected::Other("No entity result"), &"ItemEntity"));
     }
     Ok(out)
 }

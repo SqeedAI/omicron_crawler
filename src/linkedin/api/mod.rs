@@ -1,18 +1,26 @@
 pub mod crawler;
 pub mod json;
 pub mod rate_limits;
+mod tracking_client;
 mod utils;
 
 use crate::errors::CrawlerError::{LinkedinError, SessionError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::{AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
-use crate::linkedin::api::utils::{cookies_session_id, load_cookies, save_cookies};
+use crate::linkedin::api::json::response::SignupChallenge;
+use crate::linkedin::api::json::{
+    request, response, AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView,
+};
+use crate::linkedin::api::tracking_client::{
+    default_li_user_agent, default_requested_with, default_user_agent, default_webview_user_agent, new_native_tracking_headers,
+    new_webview_tracking_headers, DeviceInfo,
+};
+use crate::linkedin::api::utils::{cookies_session_id, generate_jsessionid, load_cookies, save_cookies};
 use crate::session_pool::traits::Session;
 use actix_web::cookie::CookieJar;
 use actix_web::web::Json;
 use chrono::format;
 use cookie::Cookie;
-use http::{HeaderMap, HeaderValue};
+use http::{HeaderMap, HeaderValue, StatusCode};
 use regex::Regex;
 use reqwest::cookie::CookieStore as CookieStoreTrait;
 use reqwest::{Client, Proxy, Url};
@@ -27,15 +35,18 @@ use tokio::io::AsyncReadExt;
 use urlencoding::encode;
 
 pub struct LinkedinClient {
-    session_id: Option<String>,
+    session_id: String,
     client: Client,
+    native_headers: HeaderMap,
+    webview_headers: HeaderMap,
+    native_device_info: DeviceInfo,
     cookie_store: Arc<CookieStoreMutex>,
 }
 
 impl LinkedinClient {
-    const LINKEDIN_URL: &'static str = "https://www.linkedin.com";
+    const API_DOMAIN: &'static str = "https://www.linkedin.com";
     const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
-    const API_URL: &'static str = "https://www.linkedin.com/voyager/api";
+    const VOYAGER_URL: &'static str = "https://www.linkedin.com/voyager/api";
     const COOKIE_FOLDER: &'static str = "cookies/";
 
     fn create_default_headers(csrf_token: Option<&str>) -> HeaderMap {
@@ -55,7 +66,7 @@ impl LinkedinClient {
         headers
     }
     pub async fn obtain_session_id(&self) -> CrawlerResult<(String)> {
-        let auth_url = format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate");
+        let auth_url = format!("{}{}", Self::API_DOMAIN, "/uas/authenticate");
         let default_headers = Self::create_default_headers(None);
 
         let response = fatal_unwrap_e!(
@@ -121,7 +132,7 @@ impl LinkedinClient {
         ];
         let response = match self
             .client
-            .post(format!("{}{}", Self::LINKEDIN_URL, "/uas/authenticate"))
+            .post(format!("{}{}", Self::API_DOMAIN, "/uas/authenticate"))
             .headers(headers)
             .form(&form)
             .send()
@@ -156,7 +167,7 @@ impl LinkedinClient {
         }
         info!("Authenticated successfully");
         self.session_id = Some(session_id);
-        let url = Url::parse(Self::LINKEDIN_URL).unwrap();
+        let url = Url::parse(Self::API_DOMAIN).unwrap();
         let cookies = self.cookie_store.cookies(&url).unwrap();
         let bytes = cookies.as_bytes();
         save_cookies(bytes, cookie_path.as_str())?;
@@ -171,7 +182,7 @@ impl LinkedinClient {
             None => return Err(SessionError("Session is not initialized".to_string())),
         };
 
-        let endpoint = format!("{}/identity/profiles/{}/profileView", Self::API_URL, profile_id);
+        let endpoint = format!("{}/identity/profiles/{}/profileView", Self::VOYAGER_URL, profile_id);
         let headers = Self::create_default_headers(Some(session_id.as_str()));
         let profile = match self.client.get(endpoint).headers(headers).send().await {
             Ok(response) => {
@@ -251,7 +262,7 @@ impl LinkedinClient {
         while current_offset < total_offset {
             let endpoint = format!(
                 "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
-                Self::API_URL,
+                Self::VOYAGER_URL,
                 current_offset,
                 encoded_keywords,
                 filter_params
@@ -287,7 +298,7 @@ impl LinkedinClient {
             None => return Err(SessionError("No session id found".to_string())),
         };
 
-        let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::API_URL, profile_id);
+        let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::VOYAGER_URL, profile_id);
         let headers = Self::create_default_headers(Some(session_id.as_ref()));
         let skills = match self.client.get(endpoint).headers(headers).send().await {
             Ok(response) => match response.json::<SkillView>().await {
@@ -300,7 +311,7 @@ impl LinkedinClient {
     }
 
     fn parse_cookies(cookie_store: &mut CookieStore, cookies: String) -> CrawlerResult<String> {
-        let linkedin_url = Url::parse(Self::LINKEDIN_URL).unwrap();
+        let linkedin_url = Url::parse(Self::API_DOMAIN).unwrap();
         {
             let cookie_list = cookies.split(";").collect::<Vec<&str>>();
             for cookie in cookie_list {
@@ -315,6 +326,82 @@ impl LinkedinClient {
             }
         }
     }
+
+    pub async fn tracking(&mut self) -> CrawlerResult<String> {
+        let url = fatal_unwrap_e!(
+            Url::parse(format!("{}/mob/tracking", Self::API_DOMAIN).as_str()),
+            "Failed to parse tracking url"
+        );
+        let tracking_data = serde_json::to_string(&self.native_device_info).unwrap();
+        let response = self
+            .client
+            .get(url)
+            .header("User-Agent", tracking_data)
+            .send()
+            .await
+            .map_err(|e| LinkedinError(format!("Failed to send tracking request {}", e)))?;
+        Ok(response.text().await.unwrap())
+    }
+
+    pub async fn signup(&self, signup_data: request::Signup) -> CrawlerResult<response::Signup> {
+        let response = self
+            .client
+            .post(format!(
+                "{}{}",
+                Self::API_DOMAIN,
+                "/signup/api/createAccount?trk=native_voyager_join"
+            ))
+            .headers(self.native_headers.clone())
+            .json(&signup_data);
+        let response = match response.send().await {
+            Ok(response) => response,
+            Err(e) => return Err(LinkedinError(format!("Failed to send signup request {}", e))),
+        };
+
+        match response.status() {
+            StatusCode::OK => match response.json::<response::Signup>().await {
+                Ok(response) => Ok(response),
+                Err(e) => Err(LinkedinError(format!("Failed to parse signup response {}", e))),
+            },
+            _code => {
+                let response = match response.text().await {
+                    Ok(response) => response,
+                    Err(e) => return Err(LinkedinError(format!("Failed to get signup response {}", e))),
+                };
+                Err(LinkedinError(format!("Failed to signup {} {}", _code, response)))
+            }
+        }
+    }
+
+    pub async fn challenge(&self, challenge: &SignupChallenge) -> CrawlerResult<String> {
+        let url = fatal_unwrap_e!(
+            Url::parse(format!("{}{}", Self::API_DOMAIN.as_str(), challenge.challenge_url)),
+            "Failed to parse challenge url"
+        );
+
+        let res = self
+            .client
+            .get(url)
+            .headers(self.webview_headers.clone())
+            .send()
+            .await
+            .map_err(|e| LinkedinError(format!("Failed to send challenge request {}", e)))?;
+        let text = match res.status() {
+            StatusCode::OK => match res.text().await {
+                Ok(text) => text,
+                Err(e) => return Err(LinkedinError(format!("Failed to get challenge text {}", e))),
+            },
+            _code => {
+                let response = match res.text().await {
+                    Ok(response) => response,
+                    Err(e) => return Err(LinkedinError(format!("Failed to get challenge response {}", e))),
+                };
+                return Err(LinkedinError(format!("Failed to challenge {} {}", _code, response)));
+            }
+        };
+        Ok(text)
+    }
+
     pub fn new_proxy(endpoint: &str, username: &str, password: &str) -> LinkedinClient {
         let cookie_store = CookieStore::new(None);
 
@@ -333,11 +420,7 @@ impl LinkedinClient {
                 .build(),
             "Failed to create client {}"
         );
-        Self {
-            session_id: None,
-            client,
-            cookie_store,
-        }
+        Self::new_with_client(client, cookie_store)
     }
 
     pub fn new() -> LinkedinClient {
@@ -349,10 +432,22 @@ impl LinkedinClient {
             Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
             "Failed to create client {}"
         );
+        Self::new_with_client(client, cookie_store)
+    }
+
+    fn new_with_client(client: Client, cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
+        let native_device_info = DeviceInfo::default();
+        let session_id = generate_jsessionid();
+        let native_headers = new_native_tracking_headers(&session_id, &native_device_info, default_user_agent(), default_li_user_agent());
+        let webview_headers = new_webview_tracking_headers(default_webview_user_agent(), default_requested_with());
+
         Self {
-            session_id: None,
+            session_id,
             client,
             cookie_store,
+            native_headers,
+            webview_headers,
+            native_device_info,
         }
     }
 }

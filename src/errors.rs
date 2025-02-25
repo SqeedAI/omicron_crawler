@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 pub type CrawlerResult<T> = Result<T, CrawlerError>;
+// TODO Properly separate api errors from crawler errors from web driver errors
 pub enum CrawlerError {
     ParseError(String),
     InteractionError(String),
