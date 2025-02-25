@@ -391,12 +391,7 @@ impl LinkedinClient {
         Ok(text)
     }
 
-    pub fn new_proxy(endpoint: &str, username: &str, password: &str) -> LinkedinClient {
-        let cookie_store = CookieStore::new(None);
-
-        let cookie_store = CookieStoreMutex::new(cookie_store);
-        let cookie_store = Arc::new(cookie_store);
-
+    pub fn new_proxy(endpoint: &str, username: &str, password: &str, cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
@@ -412,11 +407,92 @@ impl LinkedinClient {
         Self::new_with_client(client, cookie_store)
     }
 
-    pub fn new() -> LinkedinClient {
-        let cookie_store = CookieStore::new(None);
-        let cookie_store = CookieStoreMutex::new(cookie_store);
-        let cookie_store = Arc::new(cookie_store);
+    pub fn new_from_existing_proxy(
+        endpoint: &str,
+        username: &str,
+        password: &str,
+        cookie_store: Arc<CookieStoreMutex>,
+        native_device_info: DeviceInfo,
+        user_agent: &str,
+        li_user_agent: &str,
+        webview_user_agent: &str,
+        requested_with: &str,
+    ) -> CrawlerResult<LinkedinClient> {
+        let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
+        let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
+        let client = fatal_unwrap_e!(
+            Client::builder()
+                .cookie_store(true)
+                .cookie_provider(cookie_store.clone())
+                .proxy(https_proxy)
+                .proxy(http_proxy)
+                .build(),
+            "Failed to create client {}"
+        );
+        Self::new_from_existing_with_client(
+            client,
+            cookie_store,
+            native_device_info,
+            user_agent,
+            li_user_agent,
+            webview_user_agent,
+            requested_with,
+        )
+    }
+
+    pub fn new_from_existing(
+        cookie_store: Arc<CookieStoreMutex>,
+        native_device_info: DeviceInfo,
+        user_agent: &str,
+        li_user_agent: &str,
+        webview_user_agent: &str,
+        requested_with: &str,
+    ) -> CrawlerResult<LinkedinClient> {
+        let client = fatal_unwrap_e!(
+            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            "Failed to create client {}"
+        );
+        Self::new_from_existing_with_client(
+            client,
+            cookie_store,
+            native_device_info,
+            user_agent,
+            li_user_agent,
+            webview_user_agent,
+            requested_with,
+        )
+    }
+
+    fn new_from_existing_with_client(
+        client: Client,
+        cookie_store: Arc<CookieStoreMutex>,
+        native_device_info: DeviceInfo,
+        user_agent: &str,
+        li_user_agent: &str,
+        webview_user_agent: &str,
+        requested_with: &str,
+    ) -> CrawlerResult<LinkedinClient> {
+        let cookie_lock = cookie_store.lock().unwrap();
+        let session_id = match cookie_lock.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
+            Some(cookie) => cookie.value().to_string(),
+            None => return Err(LinkedinError("No JSESSIONID cookie found".to_string())),
+        };
+        drop(cookie_lock);
+
+        let native_headers = new_native_tracking_headers(&session_id, &native_device_info, user_agent, li_user_agent);
+        let webview_headers = new_webview_tracking_headers(webview_user_agent, requested_with);
+        Ok(Self {
+            session_id,
+            client,
+            native_headers,
+            webview_headers,
+            native_device_info,
+            cookie_store,
+        })
+    }
+
+    pub fn new(cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
         let client = fatal_unwrap_e!(
             Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
             "Failed to create client {}"

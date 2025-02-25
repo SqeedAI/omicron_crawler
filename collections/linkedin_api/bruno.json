@@ -7,7 +7,7 @@
     ".git"
   ],
   "proxy": {
-    "enabled": true,
+    "enabled": false,
     "protocol": "https",
     "hostname": "pr.oxylabs.io",
     "port": 7777,
@@ -21,5 +21,7 @@
   "clientCertificates": {
     "enabled": true,
     "certs": []
-  }
+  },
+  "size": 0.02759552001953125,
+  "filesCount": 18
 }
