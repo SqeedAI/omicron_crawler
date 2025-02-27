@@ -35,9 +35,9 @@ use urlencoding::encode;
 
 pub struct Client {
     client: reqwest::Client,
-    native_headers: HeaderMap,
-    webview_headers: HeaderMap,
-    native_device_info: DeviceInfo,
+    pub native_headers: HeaderMap,
+    pub webview_headers: HeaderMap,
+    pub native_device_info: DeviceInfo,
     cookie_store: Arc<CookieStoreMutex>,
 }
 
