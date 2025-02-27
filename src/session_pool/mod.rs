@@ -1,5 +1,4 @@
 pub mod traits;
-use crate::session_pool::traits::Session;
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
 use std::sync::{Condvar, Mutex};
@@ -7,7 +6,7 @@ use tokio::runtime::Builder;
 
 pub struct SessionProxy<'a, SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     driver_session_pool: &'a SessionPool<SessionType>,
     pub session: Option<SessionType>,
@@ -15,7 +14,7 @@ where
 
 impl<'a, SessionType> SessionProxy<'a, SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     pub fn new(session: SessionType, driver_session_pool: &'a SessionPool<SessionType>) -> Self {
         Self {
@@ -27,7 +26,7 @@ where
 
 impl<'a, SessionType> Drop for SessionProxy<'a, SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     fn drop(&mut self) {
         self.driver_session_pool.release(self);
@@ -36,7 +35,7 @@ where
 
 pub struct SessionPool<SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     sessions_available_signal: Condvar,
     sessions_available_signal_lock: Mutex<()>,
@@ -44,7 +43,7 @@ where
 }
 impl<SessionType> SessionPool<SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     pub fn new(sessions: Vec<SessionType>) -> Self {
         let available_sessions = ArrayQueue::new(sessions.len());
@@ -86,7 +85,7 @@ where
 
 impl<SessionType> Drop for SessionPool<SessionType>
 where
-    SessionType: Session,
+    SessionType: Send,
 {
     fn drop(&mut self) {
         self.wait_for_all_sessions_to_be_released();
@@ -94,15 +93,7 @@ where
         thread::scope(|s| {
             s.spawn(|_| {
                 let runtime = Builder::new_current_thread().enable_all().build().unwrap();
-                runtime.block_on(async move {
-                    while let Some(session) = sessions.pop() {
-                        if let Err(e) = session.quit().await {
-                            eprintln!("Failed to quit the session: {}", e);
-                        } else {
-                            println!("Session quit successfully");
-                        }
-                    }
-                });
+                runtime.block_on(async move { while let Some(_) = sessions.pop() {} });
             });
         })
         .unwrap();

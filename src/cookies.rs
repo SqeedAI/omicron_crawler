@@ -11,7 +11,7 @@ pub fn new_cookie_jar() -> Arc<CookieStoreMutex> {
     Arc::new(cookie_store_mutex)
 }
 
-pub fn cookie_save(cookie_store: Arc<CookieStoreMutex>, url: &Url, file_path: &str) -> IoResult<()> {
+pub fn cookie_save(cookie_store: &Arc<CookieStoreMutex>, url: &Url, file_path: &str) -> IoResult<()> {
     let cookies = match cookie_store.cookies(url) {
         Some(cookies) => cookies,
         None => {

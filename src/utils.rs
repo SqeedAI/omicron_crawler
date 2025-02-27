@@ -1,5 +1,5 @@
 use crate::errors::IoError::FileError;
-use crate::errors::{CrawlerResult, IoResult};
+use crate::errors::IoResult;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;

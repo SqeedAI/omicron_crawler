@@ -4,16 +4,17 @@ pub mod rate_limits;
 mod tracking_client;
 mod utils;
 
-use crate::errors::CrawlerError::{LinkedinError, SessionError};
-use crate::errors::CrawlerResult;
+use crate::cookies::cookie_save;
+use crate::errors::ClientError::{CookieError, HeaderError, IoError, RequestError, ResponseError};
+use crate::errors::IoError::ParseError;
+use crate::errors::{ClientError, ClientResult};
 use crate::linkedin::json::res::SignupChallenge;
 use crate::linkedin::json::{req, res, AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
 use crate::linkedin::tracking_client::{
     default_li_user_agent, default_requested_with, default_user_agent, default_webview_user_agent, new_native_tracking_headers,
     new_webview_tracking_headers, DeviceInfo,
 };
-use crate::linkedin::utils::{cookies_session_id, generate_jsessionid, load_cookies, save_cookies};
-use crate::session_pool::traits::Session;
+use crate::linkedin::utils::{cookies_session_id, generate_jsessionid};
 use actix_web::cookie::CookieJar;
 use actix_web::web::Json;
 use chrono::format;
@@ -33,7 +34,6 @@ use tokio::io::AsyncReadExt;
 use urlencoding::encode;
 
 pub struct Client {
-    session_id: String,
     client: reqwest::Client,
     native_headers: HeaderMap,
     webview_headers: HeaderMap,
@@ -63,64 +63,19 @@ impl Client {
         }
         headers
     }
-    pub async fn obtain_session_id(&self) -> CrawlerResult<(String)> {
-        let auth_url = format!("{}{}", Self::API_DOMAIN, "/uas/authenticate");
-        let default_headers = Self::create_default_headers(None);
 
-        let response = fatal_unwrap_e!(
-            self.client.get(auth_url).headers(default_headers).send().await,
-            "Failed to obtain linkedin set-cookies {}"
-        );
-        if !response.status().is_success() {
-            let status = response.status();
-            let text = response.text().await.unwrap();
-            return Err(SessionError(format!("Failed to obtain linkedin set-cookies {} {}", status, text)));
-        }
-
-        let auth_response = match response.json::<FetchCookiesResponse>().await {
-            Ok(response) => response,
-            Err(e) => {
-                return Err(SessionError(format!("Failed to parse auth response {}", e)));
-            }
-        };
-        if auth_response.status != "success" {
-            return Err(SessionError(format!("Failed to obtain session_id {}", auth_response.status)));
-        }
-
-        let cookies = self.cookie_store.lock().unwrap();
-        let session_id_cookie = cookies.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID").unwrap();
-
-        let cookie_raw = session_id_cookie.value();
-        debug!("{}", cookie_raw);
-        let session_id = cookie_raw.replace("\"", "").to_string();
-        Ok(session_id)
+    fn get_session_id(&self) -> ClientResult<String> {
+        let session_id = self
+            .native_headers
+            .get("JSESSIONID")
+            .ok_or(ClientError::HeaderError("JSESSIONID not found".to_string()))?;
+        Ok(session_id.to_str().unwrap().to_string())
     }
-    pub async fn authenticate(&mut self, username: &str, password: &str, ignore_cookies: bool) -> CrawlerResult<()> {
-        let cookie_path = format!("{}{}", Self::COOKIE_FOLDER, username);
-        if !ignore_cookies {
-            match load_cookies(cookie_path.as_str()) {
-                Some(cookies) => {
-                    let mut cookies_guard = self.cookie_store.lock().unwrap();
-                    let cookies_store = cookies_guard.deref_mut();
-                    match Self::parse_cookies(cookies_store, cookies) {
-                        Ok(session_id) => {
-                            info!("Found cookies for {}, using them", username);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            error!("{}", e);
-                        }
-                    }
-                }
-                _ => {}
-            };
-        }
-
+    pub async fn authenticate(&mut self, username: &str, password: &str) -> ClientResult<()> {
         info!("Authenticating and generating cookies...");
-        let session_id = self.obtain_session_id().await?;
-        info!("Obtained session id");
+        //TODO Make sure to call tracking before this
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let headers = Self::create_default_headers(Some(session_id.as_str()));
+        let session_id = self.get_session_id()?;
         let formatted_session_id = format!("\"{}\"", session_id);
         let form = vec![
             ("session_key", username),
@@ -130,19 +85,19 @@ impl Client {
         let response = match self
             .client
             .post(format!("{}{}", Self::API_DOMAIN, "/uas/authenticate"))
-            .headers(headers)
+            .headers(self.native_headers.clone())
             .form(&form)
             .send()
             .await
         {
             Ok(response) => response,
             Err(e) => {
-                return Err(SessionError(format!("Failed authenticate request {}", e)));
+                return Err(ResponseError(format!("Failed authenticate request {}", e)));
             }
         };
 
         if !response.status().is_success() {
-            return Err(SessionError(format!(
+            return Err(ResponseError(format!(
                 "Failed to authenticate {} {}",
                 response.status(),
                 response.text().await.unwrap()
@@ -152,52 +107,51 @@ impl Client {
         let response_data = match response.json::<AuthenticateResponse>().await {
             Ok(response_data) => response_data,
             Err(e) => {
-                return Err(SessionError(format!("Failed to parse authenticate response {}", e)));
+                return Err(ClientError::SerializationError(format!(
+                    "Failed to parse authenticate response {}",
+                    e
+                )));
             }
         };
 
         if response_data.login_result != "PASS" {
-            return Err(SessionError(format!(
+            return Err(ResponseError(format!(
                 "Failed to authenticate {} {}",
                 response_data.login_result, response_data.challenge_url
             )));
         }
         info!("Authenticated successfully");
         let url = Url::parse(Self::API_DOMAIN).unwrap();
-        let cookies = self.cookie_store.cookies(&url).unwrap();
-        let bytes = cookies.as_bytes();
-        save_cookies(bytes, cookie_path.as_str())?;
+        cookie_save(&self.cookie_store, &url, username).map_err(|e| IoError(e))?;
         tokio::time::sleep(Duration::from_secs(1)).await;
         Ok(())
     }
 
-    pub async fn profile(&self, profile_id: &str) -> CrawlerResult<Profile> {
+    pub async fn profile(&self, profile_id: &str) -> ClientResult<Profile> {
         info!("Getting profile {}", profile_id);
-        let session_id = &self.session_id;
 
         let endpoint = format!("{}/identity/profiles/{}/profileView", Self::VOYAGER_URL, profile_id);
-        let headers = Self::create_default_headers(Some(session_id.as_str()));
-        let profile = match self.client.get(endpoint).headers(headers).send().await {
+        let profile = match self.client.get(endpoint).headers(self.native_headers.clone()).send().await {
             Ok(response) => {
                 if !response.status().is_success() {
-                    return Err(LinkedinError(format!("Failed to get profile {}", response.text().await.unwrap())));
+                    return Err(ResponseError(format!("Failed to get profile {}", response.text().await.unwrap())));
                 }
                 match response.json::<Profile>().await {
                     Ok(profile) => profile,
-                    Err(e) => return Err(SessionError(format!("Failed to parse profile {:?}", e))),
+                    Err(e) => return Err(ClientError::SerializationError(format!("Failed to parse profile {:?}", e))),
                 }
             }
-            Err(e) => return Err(SessionError(format!("Failed to get profile {}", e))),
+            Err(e) => return Err(ClientError::SerializationError(format!("Failed to get profile {}", e))),
         };
 
         Ok(profile)
     }
 
-    pub async fn search_people(&self, mut params: SearchParams) -> CrawlerResult<SearchResult> {
-        let session_id = &self.session_id;
+    pub async fn search_people(&self, mut params: SearchParams) -> ClientResult<SearchResult> {
+        let session_id = self.get_session_id()?;
 
         if params.page > params.end {
-            return Err(SessionError("Start page cannot be greater than end page".to_string()));
+            return Err(RequestError("Start page cannot be greater than end page".to_string()));
         }
 
         let mut filters = Vec::<String>::new();
@@ -257,14 +211,13 @@ impl Client {
                 encoded_keywords,
                 filter_params
             );
-            let headers = Self::create_default_headers(Some(session_id.as_str()));
 
-            let response = match self.client.get(endpoint).headers(headers).send().await {
+            let response = match self.client.get(endpoint).headers(self.native_headers.clone()).send().await {
                 Ok(response) => match response.json::<SearchResult>().await {
                     Ok(result) => result,
-                    Err(e) => return Err(SessionError(format!("search people parse failed: {:?}", e))),
+                    Err(e) => return Err(ResponseError(format!("search people parse failed: {:?}", e))),
                 },
-                Err(e) => return Err(SessionError(format!("search people failed {:?}", e))),
+                Err(e) => return Err(ResponseError(format!("search people failed {:?}", e))),
             };
             for item in response.elements.iter() {
                 search_response.elements.push(item.clone());
@@ -282,39 +235,19 @@ impl Client {
         Ok(search_response)
     }
 
-    pub async fn skills(&self, profile_id: &str) -> CrawlerResult<SkillView> {
-        let session_id = &self.session_id;
-
+    pub async fn skills(&self, profile_id: &str) -> ClientResult<SkillView> {
         let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::VOYAGER_URL, profile_id);
-        let headers = Self::create_default_headers(Some(session_id.as_ref()));
-        let skills = match self.client.get(endpoint).headers(headers).send().await {
+        let skills = match self.client.get(endpoint).headers(self.native_headers.clone()).send().await {
             Ok(response) => match response.json::<SkillView>().await {
                 Ok(skills) => skills,
-                Err(e) => return Err(SessionError(format!("Failed to parse skills {:?}", e))),
+                Err(e) => return Err(ClientError::SerializationError(format!("Failed to parse skills {:?}", e))),
             },
-            Err(e) => return Err(SessionError(format!("Failed to get skills {:?}", e))),
+            Err(e) => return Err(ResponseError(format!("Failed to get skills {:?}", e))),
         };
         Ok(skills)
     }
 
-    fn parse_cookies(cookie_store: &mut CookieStore, cookies: String) -> CrawlerResult<String> {
-        let linkedin_url = Url::parse(Self::API_DOMAIN).unwrap();
-        {
-            let cookie_list = cookies.split(";").collect::<Vec<&str>>();
-            for cookie in cookie_list {
-                if let Err(code) = cookie_store.parse(cookie, &linkedin_url) {
-                    error!("Failed to parse cookie {}", code);
-                }
-            }
-
-            match cookie_store.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
-                Some(cookies) => Ok(cookies.value().to_string().replace("\"", "")),
-                None => Err(SessionError("Failed to find JSESSIONID".to_string())),
-            }
-        }
-    }
-
-    pub async fn tracking(&mut self) -> CrawlerResult<String> {
+    pub async fn tracking(&mut self) -> ClientResult<String> {
         let url = fatal_unwrap_e!(
             Url::parse(format!("{}/mob/tracking", Self::API_DOMAIN).as_str()),
             "Failed to parse tracking url {}"
@@ -326,11 +259,12 @@ impl Client {
             .header("User-Agent", tracking_data)
             .send()
             .await
-            .map_err(|e| LinkedinError(format!("Failed to send tracking request {}", e)))?;
+            .map_err(|e| ResponseError(format!("Failed to send tracking request {}", e)))?;
         Ok(response.text().await.unwrap())
     }
 
-    pub async fn signup(&self, signup_data: req::Signup) -> CrawlerResult<res::Signup> {
+    pub async fn signup(&self, signup_data: req::Signup) -> ClientResult<res::Signup> {
+        let url = Url::parse(Self::API_DOMAIN).unwrap();
         let response = self
             .client
             .post(format!(
@@ -342,25 +276,27 @@ impl Client {
             .json(&signup_data);
         let response = match response.send().await {
             Ok(response) => response,
-            Err(e) => return Err(LinkedinError(format!("Failed to send signup request {}", e))),
+            Err(e) => return Err(ResponseError(format!("Failed to send signup request {}", e))),
         };
 
-        match response.status() {
+        let result = match response.status() {
             StatusCode::OK => match response.json::<res::Signup>().await {
                 Ok(response) => Ok(response),
-                Err(e) => Err(LinkedinError(format!("Failed to parse signup response {}", e))),
+                Err(e) => Err(ResponseError(format!("Failed to parse signup response {}", e))),
             },
             _code => {
                 let response = match response.text().await {
                     Ok(response) => response,
-                    Err(e) => return Err(LinkedinError(format!("Failed to get signup response {}", e))),
+                    Err(e) => return Err(ResponseError(format!("Failed to get signup response {}", e))),
                 };
-                Err(LinkedinError(format!("Failed to signup {} {}", _code, response)))
+                Err(ResponseError(format!("Failed to signup {} {}", _code, response)))
             }
-        }
+        };
+        cookie_save(&self.cookie_store, &url, &signup_data.email_address).map_err(|e| IoError(e))?;
+        result
     }
 
-    pub async fn challenge(&self, challenge: &SignupChallenge) -> CrawlerResult<String> {
+    pub async fn challenge(&self, challenge: &SignupChallenge) -> ClientResult<String> {
         let url = fatal_unwrap_e!(
             Url::parse(format!("{}{}", Self::API_DOMAIN, challenge.challenge_url).as_str()),
             "Failed to parse challenge url {}"
@@ -372,18 +308,18 @@ impl Client {
             .headers(self.webview_headers.clone())
             .send()
             .await
-            .map_err(|e| LinkedinError(format!("Failed to send challenge request {}", e)))?;
+            .map_err(|e| ResponseError(format!("Failed to send challenge request {}", e)))?;
         let text = match res.status() {
             StatusCode::OK => match res.text().await {
                 Ok(text) => text,
-                Err(e) => return Err(LinkedinError(format!("Failed to get challenge text {}", e))),
+                Err(e) => return Err(ResponseError(format!("Failed to get challenge text {}", e))),
             },
             _code => {
                 let response = match res.text().await {
                     Ok(response) => response,
-                    Err(e) => return Err(LinkedinError(format!("Failed to get challenge response {}", e))),
+                    Err(e) => return Err(ResponseError(format!("Failed to get challenge response {}", e))),
                 };
-                return Err(LinkedinError(format!("Failed to challenge {} {}", _code, response)));
+                return Err(ResponseError(format!("Failed to challenge {} {}", _code, response)));
             }
         };
         Ok(text)
@@ -415,7 +351,7 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<Client> {
+    ) -> ClientResult<Client> {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
@@ -446,7 +382,7 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<Client> {
+    ) -> ClientResult<Client> {
         let client = fatal_unwrap_e!(
             reqwest::Client::builder()
                 .cookie_store(true)
@@ -473,18 +409,17 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<Client> {
+    ) -> ClientResult<Client> {
         let cookie_lock = cookie_store.lock().unwrap();
         let session_id = match cookie_lock.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
             Some(cookie) => cookie.value().to_string(),
-            None => return Err(LinkedinError("No JSESSIONID cookie found".to_string())),
+            None => return Err(CookieError("No JSESSIONID cookie found".to_string())),
         };
         drop(cookie_lock);
 
         let native_headers = new_native_tracking_headers(&session_id, &native_device_info, user_agent, li_user_agent);
         let webview_headers = new_webview_tracking_headers(webview_user_agent, requested_with);
         Ok(Self {
-            session_id,
             client,
             native_headers,
             webview_headers,
@@ -511,18 +446,11 @@ impl Client {
         let webview_headers = new_webview_tracking_headers(default_webview_user_agent(), default_requested_with());
 
         Self {
-            session_id,
             client,
             cookie_store,
             native_headers,
             webview_headers,
             native_device_info,
         }
-    }
-}
-
-impl Session for Client {
-    async fn quit(self) -> CrawlerResult<()> {
-        Ok(())
     }
 }

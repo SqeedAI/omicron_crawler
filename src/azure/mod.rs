@@ -1,10 +1,11 @@
 pub mod json;
 
 // TODO Refactor, this crate should be generic, no LINKEDIN dependencies
+use crate::api_client::ApiClient;
 use crate::azure::json::ProfileIds;
 use crate::env::get_env;
-use crate::errors::CrawlerError::{BusError, QueueError};
-use crate::errors::CrawlerResult;
+use crate::errors::ClientError::{RequestError, ResponseError, SerializationError};
+use crate::errors::ClientResult;
 use crate::linkedin::json::SearchParams;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
@@ -15,6 +16,7 @@ use sha2::Sha256;
 use std::fmt::{Display, Formatter};
 use std::time::{SystemTime, UNIX_EPOCH};
 use urlencoding::encode;
+
 fn create_sas_token(resource_uri: &str, sas_key_name: &str, sas_key: &str) -> Result<String, &'static str> {
     let encoded_uri = encode(resource_uri);
 
@@ -103,10 +105,10 @@ impl AzureClient {
             client: Client::new(),
         }
     }
-    pub async fn dequeue_profile(&self) -> CrawlerResult<Option<ProfileIds>> {
+    pub async fn dequeue_profile(&self) -> ClientResult<Option<ProfileIds>> {
         let sas_token = match create_sas_token(self.profile_uri, self.sas_key_name, self.sas_profile_key) {
             Ok(token) => token,
-            Err(e) => return Err(QueueError(e.to_string())),
+            Err(e) => return Err(RequestError(e.to_string())),
         };
         match self
             .client
@@ -121,16 +123,16 @@ impl AzureClient {
                 }
                 match response.json::<ProfileIds>().await {
                     Ok(profile) => Ok(Some(profile)),
-                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {:?}", e))),
+                    Err(e) => Err(ResponseError(format!("Failed to dequeue profile {:?}", e))),
                 }
             }
-            Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
+            Err(e) => Err(ResponseError(format!("Failed to dequeue profile {}", e))),
         }
     }
-    pub async fn dequeue_search(&self) -> CrawlerResult<Option<SearchParams>> {
+    pub async fn dequeue_search(&self) -> ClientResult<Option<SearchParams>> {
         let sas_token = match create_sas_token(self.search_uri, self.sas_key_name, self.sas_search_key) {
             Ok(token) => token,
-            Err(e) => return Err(QueueError(e.to_string())),
+            Err(e) => return Err(RequestError(e.to_string())),
         };
 
         match self
@@ -146,24 +148,24 @@ impl AzureClient {
                 }
                 match response.json::<SearchParams>().await {
                     Ok(params) => Ok(Some(params)),
-                    Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
+                    Err(e) => Err(ResponseError(format!("Failed to dequeue profile {}", e))),
                 }
             }
-            Err(e) => Err(QueueError(format!("Failed to dequeue profile {}", e))),
+            Err(e) => Err(ResponseError(format!("Failed to dequeue profile {}", e))),
         }
     }
 
-    pub async fn push_to_queue<T>(&self, data: &T) -> CrawlerResult<()>
+    pub async fn push_to_queue<T>(&self, data: &T) -> ClientResult<()>
     where
         T: Serialize,
     {
         let sas_token = match create_sas_token(self.profile_uri, self.sas_key_name, self.sas_profile_key) {
             Ok(sas) => sas,
-            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+            Err(e) => return Err(RequestError(format!("Failed to push search result {}", e))),
         };
         let json_body = match serde_json::to_string(data) {
             Ok(json_body) => json_body,
-            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+            Err(e) => return Err(SerializationError(format!("Failed to push search result {}", e))),
         };
         match self
             .client
@@ -176,7 +178,7 @@ impl AzureClient {
         {
             Ok(request) => {
                 if !request.status().is_success() {
-                    return Err(QueueError(format!(
+                    return Err(ResponseError(format!(
                         "Failed to push to queue with status {} body {}",
                         request.status().as_u16(),
                         request.text().await.unwrap()
@@ -184,23 +186,23 @@ impl AzureClient {
                 }
             }
             Err(e) => {
-                return Err(QueueError(format!("Failed to push to bus {:?}", e)));
+                return Err(ResponseError(format!("Failed to push to bus {:?}", e)));
             }
         }
         Ok(())
     }
 
-    pub async fn push_to_bus<T>(&self, data: &T, label: Label) -> CrawlerResult<()>
+    pub async fn push_to_bus<T>(&self, data: &T, label: Label) -> ClientResult<()>
     where
         T: Serialize,
     {
         let sas = match create_sas_token(self.manager_bus_uri, self.sas_key_name, self.manager_bus_key) {
             Ok(sas) => sas,
-            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+            Err(e) => return Err(RequestError(format!("Failed to push search result {}", e))),
         };
         let json_body = match serde_json::to_string(data) {
             Ok(json_body) => json_body,
-            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+            Err(e) => return Err(SerializationError(format!("Failed to push search result {}", e))),
         };
 
         let request = match self
@@ -214,10 +216,13 @@ impl AzureClient {
             .await
         {
             Ok(request) => request,
-            Err(e) => return Err(BusError(format!("Failed to push search result {}", e))),
+            Err(e) => return Err(ResponseError(format!("Failed to push search result {}", e))),
         };
         if !request.status().is_success() {
-            return Err(BusError(format!("Failed to push search result {}", request.text().await.unwrap())));
+            return Err(ResponseError(format!(
+                "Failed to push search result {}",
+                request.text().await.unwrap()
+            )));
         }
         Ok(())
     }

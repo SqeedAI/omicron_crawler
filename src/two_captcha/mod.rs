@@ -1,4 +1,4 @@
-use crate::errors::{ApiError, ApiResult};
+use crate::errors::{ClientError, ClientResult};
 use crate::two_captcha::req::{FunCaptchaTask, FunCaptchaTaskProxyless, ProxyType, TaskCheck};
 use crate::two_captcha::res::{Solve, TaskResult};
 use crate::two_captcha::traits::TwoCaptchaClient;
@@ -44,8 +44,8 @@ impl ProxyClient {
 }
 
 impl TwoCaptchaClient for ProxyClient {
-    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ApiResult<Solve> {
-        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ClientResult<Solve> {
+        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = FunCaptchaTask {
             proxy_password: self.password.clone(),
             proxy_login: self.username.clone(),
@@ -64,12 +64,12 @@ impl TwoCaptchaClient for ProxyClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
-        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+            .map_err(|e| ClientError::ResponseError(e.to_string()))?;
+        response.json().await.map_err(|e| ClientError::SerializationError(e.to_string()))
     }
 
-    async fn get_task_result(&self, task_id: u32) -> ApiResult<TaskResult> {
-        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+    async fn get_task_result(&self, task_id: u32) -> ClientResult<TaskResult> {
+        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = TaskCheck {
             client_key: self.client_key.clone(),
             task_id,
@@ -80,9 +80,9 @@ impl TwoCaptchaClient for ProxyClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+            .map_err(|e| ClientError::ResponseError(e.to_string()))?;
 
-        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+        response.json().await.map_err(|e| ClientError::SerializationError(e.to_string()))
     }
 }
 
@@ -104,8 +104,8 @@ impl ProxyLessClient {
 }
 
 impl TwoCaptchaClient for ProxyLessClient {
-    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ApiResult<Solve> {
-        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ClientResult<Solve> {
+        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = FunCaptchaTaskProxyless {
             website_public_key: website_public_key.to_string(),
             website_url: website_public_url.to_string(),
@@ -119,13 +119,13 @@ impl TwoCaptchaClient for ProxyLessClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+            .map_err(|e| ClientError::ResponseError(e.to_string()))?;
 
-        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+        response.json().await.map_err(|e| ClientError::SerializationError(e.to_string()))
     }
 
-    async fn get_task_result(&self, task_id: u32) -> ApiResult<TaskResult> {
-        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+    async fn get_task_result(&self, task_id: u32) -> ClientResult<TaskResult> {
+        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = TaskCheck {
             client_key: self.client_key.clone(),
             task_id,
@@ -136,8 +136,8 @@ impl TwoCaptchaClient for ProxyLessClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+            .map_err(|e| ClientError::ResponseError(e.to_string()))?;
 
-        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+        response.json().await.map_err(|e| ClientError::SerializationError(e.to_string()))
     }
 }
