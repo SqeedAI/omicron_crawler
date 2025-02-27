@@ -5,7 +5,7 @@ use crate::errors::CrawlerResult;
 use crate::linkedin::api::crawler::Commands::ProfileReady;
 use crate::linkedin::api::json::{Profile, SearchParams, SearchResult};
 use crate::linkedin::api::rate_limits::RateLimiter;
-use crate::linkedin::api::LinkedinClient;
+use crate::linkedin::api::Client;
 use crate::session_pool::{SessionPool, SessionProxy};
 use crossbeam::channel::{Receiver, Sender};
 use std::sync::atomic::AtomicBool;
@@ -16,7 +16,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
 pub struct LinkedinSessionManager {
-    session_pool: Arc<SessionPool<LinkedinClient>>,
+    session_pool: Arc<SessionPool<Client>>,
     rate_limits: RateLimiter,
 }
 
@@ -41,8 +41,7 @@ impl LinkedinSessionManager {
 
         let mut sessions = Vec::with_capacity(config.sessions.len());
         for entry in config.sessions {
-            let mut linkedin_client =
-                LinkedinClient::new_proxy(entry.proxy.as_str(), entry.proxy_username.as_str(), entry.proxy_password.as_str());
+            let mut linkedin_client = Client::new_proxy(entry.proxy.as_str(), entry.proxy_username.as_str(), entry.proxy_password.as_str());
             match linkedin_client
                 .authenticate(entry.username.as_str(), entry.password.as_str(), false)
                 .await

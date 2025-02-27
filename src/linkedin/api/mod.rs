@@ -6,9 +6,9 @@ mod utils;
 
 use crate::errors::CrawlerError::{LinkedinError, SessionError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::response::SignupChallenge;
+use crate::linkedin::api::json::res::SignupChallenge;
 use crate::linkedin::api::json::{
-    request, response, AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView,
+    req, res, AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView,
 };
 use crate::linkedin::api::tracking_client::{
     default_li_user_agent, default_requested_with, default_user_agent, default_webview_user_agent, new_native_tracking_headers,
@@ -23,7 +23,7 @@ use cookie::Cookie;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use regex::Regex;
 use reqwest::cookie::CookieStore as CookieStoreTrait;
-use reqwest::{Client, Proxy, Url};
+use reqwest::{Proxy, Url};
 use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
 use std::error::Error;
@@ -34,16 +34,16 @@ use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use urlencoding::encode;
 
-pub struct LinkedinClient {
+pub struct Client {
     session_id: String,
-    client: Client,
+    client: reqwest::Client,
     native_headers: HeaderMap,
     webview_headers: HeaderMap,
     native_device_info: DeviceInfo,
     cookie_store: Arc<CookieStoreMutex>,
 }
 
-impl LinkedinClient {
+impl Client {
     const API_DOMAIN: &'static str = "https://www.linkedin.com";
     const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
     const VOYAGER_URL: &'static str = "https://www.linkedin.com/voyager/api";
@@ -332,7 +332,7 @@ impl LinkedinClient {
         Ok(response.text().await.unwrap())
     }
 
-    pub async fn signup(&self, signup_data: request::Signup) -> CrawlerResult<response::Signup> {
+    pub async fn signup(&self, signup_data: req::Signup) -> CrawlerResult<res::Signup> {
         let response = self
             .client
             .post(format!(
@@ -348,7 +348,7 @@ impl LinkedinClient {
         };
 
         match response.status() {
-            StatusCode::OK => match response.json::<response::Signup>().await {
+            StatusCode::OK => match response.json::<res::Signup>().await {
                 Ok(response) => Ok(response),
                 Err(e) => Err(LinkedinError(format!("Failed to parse signup response {}", e))),
             },
@@ -391,12 +391,12 @@ impl LinkedinClient {
         Ok(text)
     }
 
-    pub fn new_proxy(endpoint: &str, username: &str, password: &str, cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
+    pub fn new_proxy(endpoint: &str, username: &str, password: &str, cookie_store: Arc<CookieStoreMutex>) -> Client {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
         let client = fatal_unwrap_e!(
-            Client::builder()
+            reqwest::Client::builder()
                 .cookie_store(true)
                 .cookie_provider(cookie_store.clone())
                 .proxy(https_proxy)
@@ -417,12 +417,12 @@ impl LinkedinClient {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<LinkedinClient> {
+    ) -> CrawlerResult<Client> {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
         let client = fatal_unwrap_e!(
-            Client::builder()
+            reqwest::Client::builder()
                 .cookie_store(true)
                 .cookie_provider(cookie_store.clone())
                 .proxy(https_proxy)
@@ -448,9 +448,12 @@ impl LinkedinClient {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<LinkedinClient> {
+    ) -> CrawlerResult<Client> {
         let client = fatal_unwrap_e!(
-            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            reqwest::Client::builder()
+                .cookie_store(true)
+                .cookie_provider(cookie_store.clone())
+                .build(),
             "Failed to create client {}"
         );
         Self::new_from_existing_with_client(
@@ -465,14 +468,14 @@ impl LinkedinClient {
     }
 
     fn new_from_existing_with_client(
-        client: Client,
+        client: reqwest::Client,
         cookie_store: Arc<CookieStoreMutex>,
         native_device_info: DeviceInfo,
         user_agent: &str,
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> CrawlerResult<LinkedinClient> {
+    ) -> CrawlerResult<Client> {
         let cookie_lock = cookie_store.lock().unwrap();
         let session_id = match cookie_lock.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
             Some(cookie) => cookie.value().to_string(),
@@ -492,15 +495,18 @@ impl LinkedinClient {
         })
     }
 
-    pub fn new(cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
+    pub fn new(cookie_store: Arc<CookieStoreMutex>) -> Client {
         let client = fatal_unwrap_e!(
-            Client::builder().cookie_store(true).cookie_provider(cookie_store.clone()).build(),
+            reqwest::Client::builder()
+                .cookie_store(true)
+                .cookie_provider(cookie_store.clone())
+                .build(),
             "Failed to create client {}"
         );
         Self::new_with_client(client, cookie_store)
     }
 
-    fn new_with_client(client: Client, cookie_store: Arc<CookieStoreMutex>) -> LinkedinClient {
+    fn new_with_client(client: reqwest::Client, cookie_store: Arc<CookieStoreMutex>) -> Client {
         let native_device_info = DeviceInfo::default();
         let session_id = generate_jsessionid();
         let native_headers = new_native_tracking_headers(&session_id, &native_device_info, default_user_agent(), default_li_user_agent());
@@ -517,7 +523,7 @@ impl LinkedinClient {
     }
 }
 
-impl Session for LinkedinClient {
+impl Session for Client {
     async fn quit(self) -> CrawlerResult<()> {
         Ok(())
     }
