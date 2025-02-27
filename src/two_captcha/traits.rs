@@ -2,6 +2,6 @@ use crate::errors::ApiResult;
 use crate::two_captcha::res::{Solve, TaskResult};
 
 pub trait TwoCaptchaClient {
-    async fn solve(&self, website_public_key: &str, website_public_url: Option<&str>, subdomain: Option<&str>) -> ApiResult<Solve>;
-    async fn get_task_result(&self, task_id: &str) -> ApiResult<TaskResult>;
+    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ApiResult<Solve>;
+    async fn get_task_result(&self, task_id: u32) -> ApiResult<TaskResult>;
 }

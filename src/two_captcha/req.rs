@@ -31,7 +31,7 @@ pub struct TwoCaptcha {
 pub struct FunCaptchaTaskProxyless {
     pub website_url: String,
     pub website_public_key: String,
-    pub funcaptcha_api_js_subdomain: String,
+    pub funcaptcha_api_js_subdomain: Option<String>,
     pub user_agent: String,
 }
 #[derive(serde::Serialize)]

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 #[repr(u8)]
+#[derive(serde::Deserialize)]
 pub enum Error {
     ErrorKeyDoesNotExist = 1,
     ErrorNoSlotAvailable = 2,

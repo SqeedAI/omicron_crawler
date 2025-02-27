@@ -1,11 +1,11 @@
 pub mod json;
 
-// TODO Refactor services into another crate
+// TODO Refactor, this crate should be generic, no LINKEDIN dependencies
 use crate::azure::json::ProfileIds;
 use crate::env::get_env;
 use crate::errors::CrawlerError::{BusError, QueueError};
 use crate::errors::CrawlerResult;
-use crate::linkedin::api::json::SearchParams;
+use crate::linkedin::json::SearchParams;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use hmac::{Hmac, Mac};

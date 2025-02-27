@@ -1,8 +1,8 @@
 use log::LevelFilter;
 use omicron_crawler::azure::{AzureClient, Label};
 use omicron_crawler::env::{get_env, load_env};
-use omicron_crawler::linkedin::api::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
-use omicron_crawler::linkedin::api::Client;
+use omicron_crawler::linkedin::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
+use omicron_crawler::linkedin::Client;
 use omicron_crawler::logger::Logger;
 
 //TODO [ERROR] Failed to crawl profile ACoAAEJ2X3QB2V1z5kXcnf2j36eoSXDcz8bRVJw reason: SessionError: Failed to parse profile reqwest::Error { kind: Decode, source: Error("missing field `timePeriod`", line: 1, column: 12934) }

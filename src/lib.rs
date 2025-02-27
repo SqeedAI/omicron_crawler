@@ -2,9 +2,9 @@
 extern crate log;
 #[macro_use]
 pub mod macros;
+pub mod api_client;
 pub mod azure;
 pub mod config;
-pub mod driver;
 pub mod env;
 pub mod errors;
 pub mod linkedin;

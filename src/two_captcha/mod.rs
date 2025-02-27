@@ -1,11 +1,11 @@
 use crate::errors::{ApiError, ApiResult};
-use crate::two_captcha::req::{FunCaptchaTask, ProxyType, TaskCheck};
+use crate::two_captcha::req::{FunCaptchaTask, FunCaptchaTaskProxyless, ProxyType, TaskCheck};
 use crate::two_captcha::res::{Solve, TaskResult};
 use crate::two_captcha::traits::TwoCaptchaClient;
-
 pub mod req;
 pub mod res;
 pub mod traits;
+
 const API_URL: &'static str = "https://api.2captcha.com";
 
 pub struct ProxyClient {
@@ -44,7 +44,7 @@ impl ProxyClient {
 }
 
 impl TwoCaptchaClient for ProxyClient {
-    async fn solve(&self, website_public_key: &str, website_public_url: Option<&str>, subdomain: Option<String>) -> ApiResult<Solve> {
+    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ApiResult<Solve> {
         let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
         let request = FunCaptchaTask {
             proxy_password: self.password.clone(),
@@ -65,6 +65,62 @@ impl TwoCaptchaClient for ProxyClient {
             .send()
             .await
             .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+    }
+
+    async fn get_task_result(&self, task_id: u32) -> ApiResult<TaskResult> {
+        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+        let request = TaskCheck {
+            client_key: self.client_key.clone(),
+            task_id,
+        };
+        let response = self
+            .client
+            .post(url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+
+        response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
+    }
+}
+
+pub struct ProxyLessClient {
+    client: reqwest::Client,
+    client_key: String,
+    user_agent: String,
+}
+
+impl ProxyLessClient {
+    pub fn new(user_agent: &str, client_key: &str) -> Self {
+        let client = reqwest::Client::new();
+        Self {
+            client,
+            client_key: client_key.to_string(),
+            user_agent: user_agent.to_string(),
+        }
+    }
+}
+
+impl TwoCaptchaClient for ProxyLessClient {
+    async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ApiResult<Solve> {
+        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ApiError::UrlError(e.to_string()))?;
+        let request = FunCaptchaTaskProxyless {
+            website_public_key: website_public_key.to_string(),
+            website_url: website_public_url.to_string(),
+            user_agent: self.user_agent.clone(),
+            funcaptcha_api_js_subdomain: subdomain,
+        };
+
+        let response = self
+            .client
+            .post(url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ApiError::EndpointError(e.to_string()))?;
+
         response.json().await.map_err(|e| ApiError::ParseError(e.to_string()))
     }
 

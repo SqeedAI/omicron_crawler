@@ -64,6 +64,7 @@ impl<'de> Deserialize<'de> for GeoUrnMap {
         }
     }
 }
+
 #[derive(serde::Deserialize)]
 pub struct SearchParams {
     pub countries: Option<Vec<GeoUrnMap>>,

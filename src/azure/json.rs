@@ -1,4 +1,4 @@
-use crate::linkedin::api::json::Profile;
+use crate::linkedin::json::Profile;
 //Move this whole crate under linkedin
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ProfileIds {
