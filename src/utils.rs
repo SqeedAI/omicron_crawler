@@ -1,4 +1,8 @@
-use std::{fs, mem};
+use crate::errors::IoError::FileError;
+use crate::errors::{CrawlerResult, IoResult};
+use std::fs;
+use std::io::{Read, Write};
+use std::path::Path;
 
 pub fn generate_random_string(length: usize) -> String {
     use rand::distributions::Alphanumeric;
@@ -7,35 +11,39 @@ pub fn generate_random_string(length: usize) -> String {
     thread_rng().sample_iter(&Alphanumeric).take(length).map(char::from).collect()
 }
 
-pub fn get_domain_url(url: &str) -> String {
-    let indices: Vec<(usize, &str)> = url.match_indices("/").collect();
-    url.split_at(indices[2].0).0.to_string()
+pub fn load_file_as_str(path: &str) -> IoResult<String> {
+    let mut file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(_) => {
+            return Err(FileError(format!("Failed to open file {}", path)));
+        }
+    };
+
+    let mut buff = String::new();
+    if let Err(error_code) = file.read_to_string(&mut buff) {
+        return Err(FileError(format!("Failed to read file {}", error_code)));
+    }
+    Ok(buff)
 }
 
-pub fn patch_binary_with_random(binary_path: &str, pattern: &[u8], random_string_size: usize) {
-    let mut binary = fatal_unwrap_e!(fs::read(binary_path), "Failed to read target binary for patching {}");
-    let pattern = pattern;
-    let new_string = generate_random_string(random_string_size);
-    // TODO use strings instead of bytes
-    let mut matches = Vec::with_capacity(3);
-    for (index, window) in binary.windows(pattern.len()).enumerate() {
-        if window == pattern {
-            matches.push(index);
+pub fn save_to_file(bytes: &[u8], path: &str) -> IoResult<()> {
+    let path_sys = Path::new(path);
+
+    if let Some(parent) = path_sys.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            return Err(FileError(format!("Failed to create directory: {}", e)));
         }
     }
-    if matches.len() == 0 {
-        info!("no pater matches found, no need to patch!");
-        return;
-    }
 
-    let first_match = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(matches[0]), random_string_size, random_string_size) };
-    info!("Replacing {} with {}", first_match, new_string);
-    mem::forget(first_match);
-
-    for index in matches {
-        let mut pattern_str = unsafe { String::from_raw_parts(binary.as_mut_ptr().add(index), random_string_size, random_string_size) };
-        pattern_str.replace_range(0..random_string_size, &new_string);
-        mem::forget(pattern_str);
+    let mut file = match fs::File::create(path_sys) {
+        Ok(file) => file,
+        Err(e) => {
+            return Err(FileError(format!("Failed to open file {}", e)));
+        }
+    };
+    if let Err(e) = file.write_all(bytes) {
+        return Err(FileError(format!("Failed to write file {}", e)));
     }
-    fs::write(binary_path, binary).unwrap();
+    info!("Bytes written to to {}", path);
+    Ok(())
 }

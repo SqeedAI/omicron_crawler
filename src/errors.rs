@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 pub type CrawlerResult<T> = Result<T, CrawlerError>;
 pub type ApiResult<T> = Result<T, ApiError>;
 
+pub type IoResult<T> = Result<T, IoError>;
+
 // TODO Properly separate api errors from crawler errors from web driver errors
 pub enum CrawlerError {
     ParseError(String),
@@ -34,5 +36,10 @@ impl Display for CrawlerError {
 pub enum ApiError {
     UrlError(String),
     EndpointError(String),
+    ParseError(String),
+}
+
+pub enum IoError {
+    FileError(String),
     ParseError(String),
 }
