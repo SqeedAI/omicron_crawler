@@ -1,34 +1,19 @@
 use log::LevelFilter;
 use omicron_crawler::azure::{AzureClient, Label};
+use omicron_crawler::cookies::new_cookie_jar;
 use omicron_crawler::env::{get_env, load_env};
 use omicron_crawler::linkedin::json::{GeoUrnMap, SearchItem, SearchParams, SearchResult};
 use omicron_crawler::linkedin::Client;
 use omicron_crawler::logger::Logger;
-#[tokio::test(flavor = "multi_thread")]
-
-async fn test_session() {
-    Logger::init(LevelFilter::Trace);
-    let mut linkedin_session = Client::new_proxy("ddc.oxylabs.io:8002", "sqeed_i0J4T", "fqXJbuiUEHaXyFd6DCQZ_+");
-    match linkedin_session.obtain_session_id().await {
-        Ok(id) => {
-            println!("Session obtained {}", id);
-        }
-        Err(e) => assert!(false, "Failed to authenticate {}", e),
-    }
-}
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn api_auth_test() {
     Logger::init(LevelFilter::Trace);
-    load_env();
-    let mut linkedin_session = Client::new_proxy(
-        "pr.oxylabs.io:7777",
-        "customer-Erik9631_zFsHq-cc-sk-city-bratislava-sessid-0624742948-sesstime-3",
-        "TWSIZxrjcUPBowSrGqz_C1",
-    );
-    let username = get_env().await.linkedin_username.as_str();
-    let password = get_env().await.linkedin_password.as_str();
-    if let Err(e) = linkedin_session.authenticate(username, password, true).await {
+    let cookie = new_cookie_jar();
+    let mut linkedin_session = Client::new(cookie);
+    let username = "test_user";
+    let password = "test_password";
+    if let Err(e) = linkedin_session.authenticate(username, password).await {
         assert!(false, "Failed to authenticate {}", e);
     }
 }
