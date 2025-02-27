@@ -1,6 +1,4 @@
 pub mod traits;
-
-use crate::driver::session::DriverSession;
 use crate::session_pool::traits::Session;
 use crossbeam::queue::ArrayQueue;
 use crossbeam::thread;
