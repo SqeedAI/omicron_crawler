@@ -1,3 +1,4 @@
+mod config;
 pub mod crawler;
 pub mod json;
 pub mod rate_limits;
@@ -8,6 +9,7 @@ use crate::cookies::cookie_save;
 use crate::errors::ClientError::{CookieError, HeaderError, IoError, RequestError, ResponseError};
 use crate::errors::IoError::ParseError;
 use crate::errors::{ClientError, ClientResult};
+use crate::linkedin::config::ApiConfig;
 use crate::linkedin::json::res::SignupChallenge;
 use crate::linkedin::json::{req, res, AuthenticateResponse, FetchCookiesResponse, Profile, SearchParams, SearchResult, Skill, SkillView};
 use crate::linkedin::tracking_client::{
@@ -27,27 +29,30 @@ use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
 use serde::de::Unexpected::Str;
 use std::error::Error;
 use std::fmt::format;
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use urlencoding::encode;
 
-pub struct Client {
+pub struct Client<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     client: reqwest::Client,
     pub native_headers: HeaderMap,
     pub webview_headers: HeaderMap,
     pub native_device_info: DeviceInfo,
     cookie_store: Arc<CookieStoreMutex>,
+    _marker: PhantomData<ConfigType>,
 }
 
-impl Client {
-    const API_DOMAIN: &'static str = "https://www.linkedin.com";
-    const COOKIE_DOMAIN: &'static str = "www.linkedin.com";
-    const VOYAGER_URL: &'static str = "https://www.linkedin.com/voyager/api";
-    const COOKIE_FOLDER: &'static str = "cookies/";
-
-    pub fn new_proxy(endpoint: &str, username: &str, password: &str, cookie_store: Arc<CookieStoreMutex>) -> Client {
+impl<ConfigType> Client<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
+    pub fn new_proxy(endpoint: &str, username: &str, password: &str, cookie_store: Arc<CookieStoreMutex>) -> Client<ConfigType> {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
@@ -73,7 +78,7 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> ClientResult<Client> {
+    ) -> ClientResult<Client<ConfigType>> {
         let https_proxy = Proxy::https(endpoint).unwrap().basic_auth(username, password);
         let http_proxy = Proxy::http(endpoint).unwrap().basic_auth(username, password);
 
@@ -104,7 +109,7 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> ClientResult<Client> {
+    ) -> ClientResult<Client<ConfigType>> {
         let client = fatal_unwrap_e!(
             reqwest::Client::builder()
                 .cookie_store(true)
@@ -131,9 +136,9 @@ impl Client {
         li_user_agent: &str,
         webview_user_agent: &str,
         requested_with: &str,
-    ) -> ClientResult<Client> {
+    ) -> ClientResult<Client<ConfigType>> {
         let cookie_lock = cookie_store.lock().unwrap();
-        let session_id = match cookie_lock.get(Self::COOKIE_DOMAIN, "/", "JSESSIONID") {
+        let session_id = match cookie_lock.get(ConfigType::COOKIE_DOMAIN, "/", "JSESSIONID") {
             Some(cookie) => cookie.value().to_string(),
             None => return Err(CookieError("No JSESSIONID cookie found".to_string())),
         };
@@ -147,10 +152,11 @@ impl Client {
             webview_headers,
             native_device_info,
             cookie_store,
+            _marker: PhantomData::<ConfigType>,
         })
     }
 
-    pub fn new(cookie_store: Arc<CookieStoreMutex>) -> Client {
+    pub fn new(cookie_store: Arc<CookieStoreMutex>) -> Client<ConfigType> {
         let client = fatal_unwrap_e!(
             reqwest::Client::builder()
                 .cookie_store(true)
@@ -161,7 +167,7 @@ impl Client {
         Self::new_with_client(client, cookie_store)
     }
 
-    fn new_with_client(client: reqwest::Client, cookie_store: Arc<CookieStoreMutex>) -> Client {
+    fn new_with_client(client: reqwest::Client, cookie_store: Arc<CookieStoreMutex>) -> Client<ConfigType> {
         let native_device_info = DeviceInfo::default();
         let session_id = generate_jsessionid();
         let native_headers = new_native_tracking_headers(&session_id, &native_device_info, default_user_agent(), default_li_user_agent());
@@ -173,6 +179,7 @@ impl Client {
             native_headers,
             webview_headers,
             native_device_info,
+            _marker: PhantomData::<ConfigType>,
         }
     }
 
@@ -213,7 +220,7 @@ impl Client {
         ];
         let response = match self
             .client
-            .post(format!("{}{}", Self::API_DOMAIN, "/uas/authenticate"))
+            .post(format!("{}{}", ConfigType::API_URL, "/uas/authenticate"))
             .headers(self.native_headers.clone())
             .form(&form)
             .send()
@@ -250,7 +257,8 @@ impl Client {
             )));
         }
         info!("Authenticated successfully");
-        let url = Url::parse(Self::API_DOMAIN).unwrap();
+        let url = Url::parse(ConfigType::API_URL).unwrap();
+        let file_path = format!("{}/{}", ConfigType::COOKIE_FOLDER, username);
         cookie_save(&self.cookie_store, &url, username).map_err(|e| IoError(e))?;
         Ok(())
     }
@@ -258,7 +266,7 @@ impl Client {
     pub async fn profile(&self, profile_id: &str) -> ClientResult<Profile> {
         info!("Getting profile {}", profile_id);
 
-        let endpoint = format!("{}/identity/profiles/{}/profileView", Self::VOYAGER_URL, profile_id);
+        let endpoint = format!("{}/voyager/api/identity/profiles/{}/profileView", ConfigType::API_URL, profile_id);
         let profile = match self.client.get(endpoint).headers(self.native_headers.clone()).send().await {
             Ok(response) => {
                 if !response.status().is_success() {
@@ -333,8 +341,8 @@ impl Client {
         let encoded_keywords = encode(&keywords);
         while current_offset < total_offset {
             let endpoint = format!(
-                "{}/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
-                Self::VOYAGER_URL,
+                "{}/voyager/api/graphql?variables=(start:{},origin:GLOBAL_SEARCH_HEADER,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:{},includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.b0928897b71bd00a5a7291755dcd64f0",
+                ConfigType::API_URL,
                 current_offset,
                 encoded_keywords,
                 filter_params
@@ -364,7 +372,11 @@ impl Client {
     }
 
     pub async fn skills(&self, profile_id: &str) -> ClientResult<SkillView> {
-        let endpoint = format!("{}/identity/profiles/{}/skills?count=100&start=0", Self::VOYAGER_URL, profile_id);
+        let endpoint = format!(
+            "{}/voyager/api/identity/profiles/{}/skills?count=100&start=0",
+            ConfigType::API_URL,
+            profile_id
+        );
         let skills = match self.client.get(endpoint).headers(self.native_headers.clone()).send().await {
             Ok(response) => match response.json::<SkillView>().await {
                 Ok(skills) => skills,
@@ -377,7 +389,7 @@ impl Client {
 
     pub async fn tracking(&self) -> ClientResult<String> {
         let url = fatal_unwrap_e!(
-            Url::parse(format!("{}/mob/tracking", Self::API_DOMAIN).as_str()),
+            Url::parse(format!("{}/mob/tracking", ConfigType::API_URL).as_str()),
             "Failed to parse tracking url {}"
         );
         let tracking_data = serde_json::to_string(&self.native_device_info).unwrap();
@@ -394,14 +406,10 @@ impl Client {
     pub async fn signup(&self, signup_data: req::Signup) -> ClientResult<res::Signup> {
         self.tracking().await?;
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let url = Url::parse(Self::API_DOMAIN).unwrap();
+        let url = Url::parse(ConfigType::API_URL).unwrap();
         let response = self
             .client
-            .post(format!(
-                "{}{}",
-                Self::API_DOMAIN,
-                "/signup/api/createAccount?trk=native_voyager_join"
-            ))
+            .post(format!("{}/signup/api/createAccount?trk=native_voyager_join", ConfigType::API_URL,))
             .headers(self.native_headers.clone())
             .json(&signup_data);
         let response = match response.send().await {
@@ -428,7 +436,7 @@ impl Client {
 
     pub async fn challenge(&self, challenge: &SignupChallenge) -> ClientResult<String> {
         let url = fatal_unwrap_e!(
-            Url::parse(format!("{}{}", Self::API_DOMAIN, challenge.challenge_url).as_str()),
+            Url::parse(format!("{}{}", ConfigType::API_URL, challenge.challenge_url).as_str()),
             "Failed to parse challenge url {}"
         );
 

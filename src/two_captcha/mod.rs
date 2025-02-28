@@ -1,14 +1,18 @@
 use crate::errors::{ClientError, ClientResult};
+use crate::two_captcha::config::ApiConfig;
 use crate::two_captcha::req::{FunCaptchaTask, FunCaptchaTaskProxyless, ProxyType, TaskCheck};
 use crate::two_captcha::res::{Solve, TaskResult};
 use crate::two_captcha::traits::TwoCaptchaClient;
+use std::marker::PhantomData;
+
+mod config;
 pub mod req;
 pub mod res;
 pub mod traits;
-
-const API_URL: &'static str = "https://api.2captcha.com";
-
-pub struct ProxyClient {
+pub struct ProxyClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     client: reqwest::Client,
     client_key: String,
     proxy_addr: String,
@@ -17,9 +21,13 @@ pub struct ProxyClient {
     password: String,
     user_agent: String,
     proxy_type: ProxyType,
+    _marker: PhantomData<ConfigType>,
 }
 
-impl ProxyClient {
+impl<ConfigType> ProxyClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     pub fn new(
         proxy_addr: &str,
         proxy_port: &str,
@@ -39,13 +47,18 @@ impl ProxyClient {
             password: password.to_string(),
             user_agent: user_agent.to_string(),
             proxy_type,
+            _marker: PhantomData::<ConfigType>,
         }
     }
 }
 
-impl TwoCaptchaClient for ProxyClient {
+impl<ConfigType> TwoCaptchaClient for ProxyClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ClientResult<Solve> {
-        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
+        let url = reqwest::Url::parse(format!("{}/createTask", ConfigType::API_URL).as_str())
+            .map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = FunCaptchaTask {
             proxy_password: self.password.clone(),
             proxy_login: self.username.clone(),
@@ -69,7 +82,8 @@ impl TwoCaptchaClient for ProxyClient {
     }
 
     async fn get_task_result(&self, task_id: u32) -> ClientResult<TaskResult> {
-        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
+        let url = reqwest::Url::parse(format!("{}/getTaskResult", ConfigType::API_URL).as_str())
+            .map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = TaskCheck {
             client_key: self.client_key.clone(),
             task_id,
@@ -86,26 +100,38 @@ impl TwoCaptchaClient for ProxyClient {
     }
 }
 
-pub struct ProxyLessClient {
+pub struct ProxyLessClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     client: reqwest::Client,
     client_key: String,
     user_agent: String,
+    _marker: PhantomData<ConfigType>,
 }
 
-impl ProxyLessClient {
+impl<ConfigType> ProxyLessClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     pub fn new(user_agent: &str, client_key: &str) -> Self {
         let client = reqwest::Client::new();
         Self {
             client,
             client_key: client_key.to_string(),
             user_agent: user_agent.to_string(),
+            _marker: PhantomData::<ConfigType>,
         }
     }
 }
 
-impl TwoCaptchaClient for ProxyLessClient {
+impl<ConfigType> TwoCaptchaClient for ProxyLessClient<ConfigType>
+where
+    ConfigType: ApiConfig,
+{
     async fn solve(&self, website_public_key: &str, website_public_url: &str, subdomain: Option<String>) -> ClientResult<Solve> {
-        let url = reqwest::Url::parse(format!("{}/createTask", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
+        let url = reqwest::Url::parse(format!("{}/createTask", ConfigType::API_URL).as_str())
+            .map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = FunCaptchaTaskProxyless {
             website_public_key: website_public_key.to_string(),
             website_url: website_public_url.to_string(),
@@ -124,8 +150,12 @@ impl TwoCaptchaClient for ProxyLessClient {
         response.json().await.map_err(|e| ClientError::SerializationError(e.to_string()))
     }
 
-    async fn get_task_result(&self, task_id: u32) -> ClientResult<TaskResult> {
-        let url = reqwest::Url::parse(format!("{}/getTaskResult", API_URL).as_str()).map_err(|e| ClientError::UrlError(e.to_string()))?;
+    async fn get_task_result(&self, task_id: u32) -> ClientResult<TaskResult>
+    where
+        ConfigType: ApiConfig,
+    {
+        let url = reqwest::Url::parse(format!("{}/getTaskResult", ConfigType::API_URL).as_str())
+            .map_err(|e| ClientError::UrlError(e.to_string()))?;
         let request = TaskCheck {
             client_key: self.client_key.clone(),
             task_id,
